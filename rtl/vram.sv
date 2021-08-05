@@ -13,16 +13,44 @@
 `include "xosera_pkg.sv"
 
 module vram(
-           input  logic         clk,
-           input  logic         sel,
-           input  logic         wr_en,
-           input  logic [15: 0] address_in,
-           input  logic [15: 0] data_in,
-           output logic [15: 0] data_out
+           input  wire logic          clk,
+           input  wire logic          sel,
+           input  wire logic          wr_en,
+           input  wire logic [15: 0]  address_in,
+           input  wire logic [15: 0]  data_in,
+           output      logic [15: 0]  data_out
        );
 
 `ifndef SYNTHESIS
 logic [15: 0] memory[0: 65535] /* verilator public */;
+
+// clear RAM to avoid simulation errors
+initial begin
+    for (integer i = 0; i < 65536; i = i + 1) begin
+        memory[i] = 16'hdead;    // "garbage"
+    end
+
+    $readmemb("fonts/font_ST_8x16w.mem", memory, 16'hf000);
+    $readmemb("fonts/font_ST_8x8w.mem", memory, 16'hf800);
+    $readmemb("fonts/hexfont_8x8w.mem", memory, 16'hfc00);
+
+end
+
+// synchronous write (keeps memory updated for easy simulator access)
+always_ff @(posedge clk) begin
+    if (sel) begin
+        if (wr_en) begin
+            memory[address_in] <= data_in;
+        end
+        data_out <= memory[address_in];
+    end
+end
+
+`else
+
+`ifdef XC7
+
+logic [15: 0] memory[0: 65535];
 
 // clear RAM to avoid simulation errors
 initial begin
@@ -124,6 +152,9 @@ SB_SPRAM256KA umem3 (
                   .POWEROFF(1'b1),
                   .DATAOUT(data3)
               );
-`endif
+              
+`endif  // XC7
+
+`endif  // SYNTHESIS
 
 endmodule

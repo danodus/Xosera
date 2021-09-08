@@ -12,8 +12,4 @@ Info: 	         SB_WARMBOOT:     1/    1   100%
 Info: 	        ICESTORM_DSP:     1/    8    12%
 Info: 	      ICESTORM_SPRAM:     4/    4   100%
 
-<<<<<<< HEAD
-Info: Max frequency for clock 'pclk': 35.91 MHz (PASS at 33.77 MHz)
-=======
-Info: Max frequency for clock 'pclk': 29.48 MHz (PASS at 25.14 MHz)
->>>>>>> 7456f2d (Add draw filled rectangle)
+Info: Max frequency for clock 'pclk': 29.21 MHz (PASS at 25.14 MHz)

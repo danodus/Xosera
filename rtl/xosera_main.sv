@@ -54,6 +54,19 @@ module xosera_main(
            input  wire logic         reset_i                 // reset signal
        );
 
+// Clock divider
+
+logic  [3:0] clk_div_counter;
+always_ff @(posedge clk) begin
+    if (reset_i)
+        clk_div_counter <= 0;
+    else
+        clk_div_counter <= clk_div_counter + 1;
+end
+
+logic  clk_div2             /* verilator public */;     // video pixel clock at half the frequency
+assign clk_div2 = clk_div_counter[0];
+
 logic        blit_vram_sel  /* verilator public */;     // blitter VRAM select
 logic        blit_xr_sel    /* verilator public */;     // blitter XR select
 logic        blit_wr        /* verilator public */;     // blitter VRAM/XR write
@@ -269,7 +282,7 @@ prim_renderer prim_renderer(
 
     .busy_o(prim_rndr_busy),                        // is busy?
 
-    .clk(clk),                                      // input clk
+    .clk(clk_div2),                                 // input clk
     .reset_i(reset_i)                               // reset
     );
 

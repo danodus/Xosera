@@ -90,6 +90,12 @@ logic [LFSR_SIZE-1:0]   LFSR            /* verilator public */;
 logic [15:0]            reg_LFSR        /* verilator public */;
 `endif
 
+// multiplication
+logic  [7:0]    reg_mult_msw_even;
+logic  [7:0]    reg_mult_msw_odd;
+logic  [7:0]    reg_mult_lsw_even;
+logic  [31:0]   mult_product;           // 16.16 fixed point multiplication product
+
 // output interrupt mask
 assign intr_mask_o = intr_mask;
 
@@ -211,6 +217,9 @@ always_ff @(posedge clk) begin
         reg_rw_addr     <= 16'h0000;
         reg_rw_incr     <= 16'h0000;
         reg_data_even   <= 8'h00;
+        
+        // multiplier
+        mult_product    <= 32'h00010000;
     end else begin
 
         intr_clear_o    <= 4'b0;
@@ -289,11 +298,11 @@ always_ff @(posedge clk) begin
                 xv::XM_LFSR:
                     ;
 `else
-                xv::XM_UNUSED_A:
-                    ;
+                xv::XM_MULT_MSW:
+                    reg_mult_msw_even   <= bus_data_byte;
 `endif
-                xv::XM_UNUSED_B:
-                    ;
+                xv::XM_MULT_LSW:
+                    reg_mult_lsw_even   <= bus_data_byte;
                 xv::XM_RW_INCR:
                     reg_rw_incr[15:8]   <= bus_data_byte;
                 xv::XM_RW_ADDR:
@@ -351,10 +360,12 @@ always_ff @(posedge clk) begin
                 xv::XM_LFSR: begin
                 end
 `else
-                xv::XM_UNUSED_A: begin
+                xv::XM_MULT_MSW: begin
+                    reg_mult_msw_odd    <= bus_data_byte;
                 end
 `endif
-                xv::XM_UNUSED_B: begin
+                xv::XM_MULT_LSW: begin
+                    mult_product        <= (signed'(mult_product) >>> 8) * (signed'({ reg_mult_msw_even, reg_mult_msw_odd, reg_mult_lsw_even, bus_data_byte }) >>> 8);
                 end
                 xv::XM_RW_INCR: begin
                     reg_rw_incr[7:0]    <= bus_data_byte;
@@ -389,6 +400,10 @@ always_ff @(posedge clk) begin
                 regs_addr_o         <= reg_rw_addr;     // output read address
                 regs_vram_sel_o     <= 1'b1;            // select VRAM
                 vram_rw_rd          <= 1'b1;            // remember pending vram read request
+            end
+
+            if (bus_reg_num == xv::XM_MULT_LSW) begin
+                mult_product <= 32'h00010000;
             end
         end
     end

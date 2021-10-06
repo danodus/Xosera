@@ -39,8 +39,8 @@
 #define XM_DATA_2    0x1C        // (R+/W+) 2nd XM_DATA(to allow for 32-bit read/write access)
 #define XM_SYS_CTRL  0x20        // (R /W+) busy status, FPGA reconfig, interrupt status/control, write masking
 #define XM_TIMER     0x24        // (RO   ) read 1/10th millisecond timer [TODO]
-#define XM_UNUSED_A  0x28        // (R /W ) unused direct register 0xA [TODO]
-#define XM_UNUSED_B  0x2C        // (R /W ) unused direct register 0xB [TODO]
+#define XM_MULT_MSW  0x28        // (R /W ) multiplication MSW 16.16 fixed point
+#define XM_MULT_LSW  0x2C        // (R /W ) multiplication LSW 16.16 fixed point
 #define XM_RW_INCR   0x30        // (R /W ) XM_RW_ADDR increment value on read/write of XM_RW_DATA/XM_RW_DATA_2
 #define XM_RW_ADDR   0x34        // (R /W+) read/write address for VRAM access from XM_RW_DATA/XM_RW_DATA_2
 #define XM_RW_DATA   0x38        // (R+/W+) read/write VRAM word at XM_RW_ADDR (and add XM_RW_INCR)
@@ -98,5 +98,27 @@
 #define XR_PB_LINE_ADDR 0x1D        // (R /W) playfield B scanline start address (loaded at start of line)
 #define XR_PB_UNUSED_1E 0x1E        //
 #define XR_PB_UNUSED_1F 0x1F        //
+
+// Draw Registers
+#define XR_DRAW_COORDX0     0x30
+#define XR_DRAW_COORDY0     0x31
+#define XR_DRAW_COORDX1     0x32
+#define XR_DRAW_COORDY1     0x33
+#define XR_DRAW_COORDX2     0x34
+#define XR_DRAW_COORDY2     0x35
+#define XR_DRAW_COLOR       0x36
+#define XR_DRAW_EXECUTE     0x37
+#define XR_DRAW_DEST_ADDR   0x38
+#define XR_DRAW_DEST_HEIGHT 0x39
+#define XR_DRAW_UNUSED_3A   0x3A
+#define XR_DRAW_UNUSED_3B   0x3B
+#define XR_DRAW_UNUSED_3C   0x3C
+#define XR_DRAW_UNUSED_3D   0x3D
+#define XR_DRAW_UNUSED_3E   0x3E
+#define XR_DRAW_UNUSED_3F   0x3F
+
+// Draw shapes
+#define DRAW_LINE            0x0
+#define DRAW_FILLED_TRIANGLE 0x1
 
 #endif        // XOSERA_M68K_DEFS_H

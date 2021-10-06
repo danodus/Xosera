@@ -21,12 +21,13 @@ matches the actual Verilog implementation). Please mention it if you spot a disc
       - [Playfield A & B Control XR Registers Summary](#playfield-a--b-control-xr-registers-summary)
       - [Playfield A & B Control XR Registers Details](#playfield-a--b-control-xr-registers-details)
       - [2D Blitter Engine XR Registers Summary](#2d-blitter-engine-xr-registers-summary)
-      - [Polygon / Line Draw Engine XR Registers Summary](#polygon--line-draw-engine-xr-registers-summary)
+      - [Draw Engine XR Registers Summary](#draw-engine-xr-registers-summary)
   - [Video Synchronized Co-Processor Details](#video-synchronized-co-processor-details)
     - [Programming the Co-processor](#programming-the-co-processor)
     - [Co-processor Instruction Set](#co-processor-instruction-set)
       - [Notes on the MOVE variants](#notes-on-the-move-variants)
     - [Co-processor Assembler](#co-processor-assembler)
+  - [Draw with 2D & 3D Accelerator](#draw-module)
 
 ## Xosera Reference Information
 
@@ -441,25 +442,31 @@ ___
 
 #### Polygon / Line Draw Engine XR Registers Summary
 
-| Reg # | Name  | R/W | Description |
-| ----- | ----- | --- | ----------- |
-| 0x30  | [TBD] | R/W |             |
-| 0x31  | [TBD] | R/W |             |
-| 0x32  | [TBD] | R/W |             |
-| 0x33  | [TBD] | R/W |             |
-| 0x34  | [TBD] | R/W |             |
-| 0x35  | [TBD] | R/W |             |
-| 0x36  | [TBD] | R/W |             |
-| 0x37  | [TBD] | R/W |             |
-| 0x38  | [TBD] | R/W |             |
-| 0x39  | [TBD] | R/W |             |
-| 0x3A  | [TBD] | R/W |             |
-| 0x3B  | [TBD] | R/W |             |
-| 0x3C  | [TBD] | R/W |             |
-| 0x3D  | [TBD] | R/W |             |
-| 0x3E  | [TBD] | R/W |             |
-| 0x3F  | [TBD] | R/W |             |
-___
+| Reg # | Name               | R/W | Description                 |
+| ----- | ------------------ | --- | --------------------------- |
+| 0x30  | `DRAW_COORDX0`     | RO  | 12-bit X0 coordinate        |
+| 0x31  | `DRAW_COORDY0`     | RO  | 12-bit Y0 coordinate        |
+| 0x32  | `DRAW_COORDX1`     | RO  | 12-bit X1 coordinate        |
+| 0x33  | `DRAW_COORDY1`     | RO  | 12-bit Y1 coordinate        |
+| 0x34  | `DRAW_COORDX2`     | RO  | 12-bit X2 coordinate        |
+| 0x35  | `DRAW_COORDY2`     | RO  | 12-bit Y2 coordinate        |
+| 0x36  | `DRAW_COLOR`       | RO  | 8-bit color                 |
+| 0x37  | `DRAW_EXECUTE`     | RO  | draw the shape (see below)  |
+| 0x38  | `DRAW_DEST_ADDR`   | RO  | destination start address   |
+| 0x39  | `DRAW_DEST_HEIGHT` | RO  | destination height in lines |
+| 0x3A  | `DRAW_UNUSED_3A`   | RO  |                             |
+| 0x3B  | `DRAW_UNUSED_3B`   | RO  |                             |
+| 0x3C  | `DRAW_UNUSED_3C`   | RO  |                             |
+| 0x3D  | `DRAW_UNUSED_3D`   | RO  |                             |
+| 0x3E  | `DRAW_UNUSED_3E`   | RO  |                             |
+| 0x3F  | `DRAW_UNUSED_3F`   | RO  |                             |
+
+The following shapes are available:
+
+| Data   | Name                   | Description     |
+| ------ | ---------------------- | --------------- |
+| 0x0000 | `DRAW_LINE`            | line            |
+| 0x0001 | `DRAW_FILLED_TRIANGLE` | filled triangle |
 
 ## Video Synchronized Co-Processor Details
 
@@ -636,3 +643,16 @@ for direct embedding into C code.
 Additionally, there are a bunch of handy C macros (in the Xosera m68k API headers) that facilitate
 writing readable copper code directly in C source code. The included examples (in `copper` directory)
 demonstrate the different ways of embedding copper code in C source.
+
+## Draw Module
+
+The rasterizer will draw the primitive when `DRAW_EXECUTE` register is set.
+
+The busy status can be retrieved by reading the `SYS_CTRL` register. The bit 7 of the status is the busy bit.
+Before sending an execute command, the user must check if this bit is cleared.
+
+The draw module only supports 8-bpp mode with 2x H&V scale factors (mode 0x75). Therefore, the
+maximum effective resolution is 320x240.
+
+Due to memory constraints, double buffering is only available with 200 lines (or lower). The destination height
+must be set to 200 (or lower) in order to clip properly the rendered pixels at the bottom.

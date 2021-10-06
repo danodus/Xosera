@@ -15,6 +15,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <cmath>
+#include <vector>
+
 #include "ftdi_spi.h"
 
 enum
@@ -38,7 +41,7 @@ enum
     XVID_RD_MOD,           // reg B: TODO read modulo width for 2D blit
     XVID_WIDTH,            // reg C: TODO width for 2D blit
     XVID_BLIT_CTRL,        // reg D: TODO
-    XVID_UNUSED_E,         // reg E: TODO
+    XVID_WR_PR_CMD,        // reg E: send a command to the primitive renderer
     XVID_UNUSED_F,         // reg F: TODO
 
     // AUX address space regions
@@ -63,7 +66,15 @@ enum
     AUX_R_GITHASH_H = AUX_VID | 0x000C,
     AUX_R_GITHASH_L = AUX_VID | 0x000D,
     AUX_R_UNUSED_E  = AUX_VID | 0x000E,
-    AUX_R_UNUSED_F  = AUX_VID | 0x000F
+    AUX_R_UNUSED_F  = AUX_VID | 0x000F,
+
+    // Primitive renderer commands
+    PR_COORDX1 = 0x0000,
+    PR_COORDY1 = 0x1000,
+    PR_COORDX2 = 0x2000,
+    PR_COORDY2 = 0x3000,
+    PR_COLOR   = 0x4000,
+    PR_EXECUTE = 0xF000
 };
 
 static void hexdump(size_t num, uint8_t * mem)
@@ -656,6 +667,183 @@ static void test_mono_bitmap(const char * filename)
     }
 }
 
+struct Coord
+{
+    float x1, y1, x2, y2;
+};
+
+static void draw_line(const Coord & coord, int color)
+{
+    xvid_setw(XVID_WR_PR_CMD, PR_COORDX1 | static_cast<int>(coord.x1));
+    xvid_setw(XVID_WR_PR_CMD, PR_COORDY1 | static_cast<int>(coord.y1));
+    xvid_setw(XVID_WR_PR_CMD, PR_COORDX2 | static_cast<int>(coord.x2));
+    xvid_setw(XVID_WR_PR_CMD, PR_COORDY2 | static_cast<int>(coord.y2));
+    xvid_setw(XVID_WR_PR_CMD, PR_COLOR | color);
+    xvid_setw(XVID_WR_PR_CMD, PR_EXECUTE);
+    delay(1);
+}
+
+// Color conversion
+// Ref.:
+// https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+
+typedef struct
+{
+    double r;        // a fraction between 0 and 1
+    double g;        // a fraction between 0 and 1
+    double b;        // a fraction between 0 and 1
+} rgb;
+
+typedef struct
+{
+    double h;        // angle in degrees
+    double s;        // a fraction between 0 and 1
+    double v;        // a fraction between 0 and 1
+} hsv;
+
+rgb hsv2rgb(hsv in)
+{
+    double hh, p, q, t, ff;
+    long   i;
+    rgb    out;
+
+    if (in.s <= 0.0)
+    {        // < is bogus, just shuts up warnings
+        out.r = in.v;
+        out.g = in.v;
+        out.b = in.v;
+        return out;
+    }
+    hh = in.h;
+    if (hh >= 360.0)
+        hh = 0.0;
+    hh /= 60.0;
+    i  = (long)hh;
+    ff = hh - i;
+    p  = in.v * (1.0 - in.s);
+    q  = in.v * (1.0 - (in.s * ff));
+    t  = in.v * (1.0 - (in.s * (1.0 - ff)));
+
+    switch (i)
+    {
+        case 0:
+            out.r = in.v;
+            out.g = t;
+            out.b = p;
+            break;
+        case 1:
+            out.r = q;
+            out.g = in.v;
+            out.b = p;
+            break;
+        case 2:
+            out.r = p;
+            out.g = in.v;
+            out.b = t;
+            break;
+
+        case 3:
+            out.r = p;
+            out.g = q;
+            out.b = in.v;
+            break;
+        case 4:
+            out.r = t;
+            out.g = p;
+            out.b = in.v;
+            break;
+        case 5:
+        default:
+            out.r = in.v;
+            out.g = p;
+            out.b = q;
+            break;
+    }
+    return out;
+}
+
+
+static void test_draw_lines()
+{
+    const std::vector<Coord> coords{{0, 0, 2, 4},   {0, 4, 2, 0},   {3, 4, 3, 0},      {3, 0, 5, 0},   {5, 0, 5, 4},
+                                    {5, 4, 3, 4},   {8, 0, 6, 0},   {6, 0, 6, 2},      {6, 2, 8, 2},   {8, 2, 8, 4},
+                                    {8, 4, 6, 4},   {9, 0, 11, 0},  {9, 0, 9, 4},      {9, 2, 11, 2},  {9, 4, 11, 4},
+                                    {12, 0, 14, 0}, {14, 0, 14, 2}, {14, 2, 12, 2},    {12, 2, 14, 4}, {12, 4, 12, 0},
+                                    {15, 4, 16, 0}, {16, 0, 17, 4}, {15.5, 2, 16.5, 2}};
+
+
+    // 8-bpp bitmap mode (320x240)
+    xvid_setw(XVID_AUX_ADDR, AUX_GFXCTRL);
+    xvid_setw(XVID_AUX_DATA, 0x0075);
+    xvid_setw(XVID_AUX_ADDR, AUX_DISPSTART);        // start addr
+    xvid_setw(XVID_AUX_DATA, 0x0000);
+    xvid_setw(XVID_AUX_ADDR, AUX_DISPWIDTH);        // display width in words
+    xvid_setw(XVID_AUX_DATA, 160);
+
+    // Set the palette
+    double hue = 0.0f;
+    for (uint16_t i = 0; i < 256; i++)
+    {
+        xvid_setw(XVID_AUX_ADDR, AUX_COLORTBL | i);        // use WR address for palette index
+
+        if (i < 16)
+        {
+            xvid_setw(XVID_AUX_DATA, defpal[i]);        // set palette data
+        }
+        else
+        {
+            auto     rgb = hsv2rgb({hue, 1.0, 1.0});
+            uint8_t  r   = 15.0 * rgb.r;
+            uint8_t  g   = 15.0 * rgb.g;
+            uint8_t  b   = 15.0 * rgb.b;
+            uint16_t c   = (r << 8) | (g << 4) | b;
+            xvid_setw(XVID_AUX_DATA, c);        // set palette data
+        }
+
+        hue += 360.0 / 256.0;
+    }
+
+    // Blue background
+    xvid_setw(XVID_WR_INC, 0x0001);
+    xvid_setw(XVID_WR_ADDR, 0x0000);
+    for (int i = 0; i < 320 * 240 / 2; ++i)
+    {
+        xvid_setw(XVID_DATA, 0x0101);
+    }
+
+    float scale_x  = 4;
+    float scale_y  = 5;
+    float offset_x = 0;
+    float offset_y = 0;
+
+    for (int i = 0; i < 10; ++i)
+    {
+        for (auto coord : coords)
+        {
+
+            coord.x1 = coord.x1 * scale_x + offset_x;
+            coord.y1 = coord.y1 * scale_y + offset_y;
+            coord.x2 = coord.x2 * scale_x + offset_x;
+            coord.y2 = coord.y2 * scale_y + offset_y;
+            draw_line(coord, i + 2);
+        }
+
+        offset_y += 5 * scale_y;
+        scale_x += 1;
+        scale_y += 1;
+    }
+
+    double angle = 0.0;
+    for (int i = 0; i < 256; i++)
+    {
+        float x = 80.0f * std::cos(angle);
+        float y = 80.0f * std::sin(angle);
+        draw_line({240, 120, 240 + x, 120 + y}, i);
+        angle += 2.0f * M_PI / 256.0f;
+    }
+
+    delay(1000);
+}
 
 static const uint16_t data_pat[8] = {0xA5A5, 0x5A5A, 0xFFFF, 0x0123, 0x4567, 0x89AB, 0xCDEF, 0x0220};
 
@@ -1074,7 +1262,7 @@ int main(int argc, char ** argv)
     xvid_setw(XVID_AUX_DATA, 0x0000);
 
     delay(5000);        // let the stunning boot logo display. :)
-#if 1
+
     xcls();
     xprint("Xosera Retro Graphics Adapter: Mode ");
     xprint_int(width);
@@ -1089,8 +1277,7 @@ int main(int argc, char ** argv)
         xprint("Hello! ");
     }
 
-    delay(5000);
-#endif
+    delay(1000);
 
     test_smoothscroll();
 
@@ -1137,6 +1324,8 @@ int main(int argc, char ** argv)
     xvid_setw(XVID_AUX_ADDR, AUX_GFXCTRL);
     xvid_setw(XVID_AUX_DATA, 0x0040);
     test_mono_bitmap("space_shuttle_color_small.raw");
+
+    test_draw_lines();
 
     host_spi_close();
 

@@ -61,9 +61,9 @@ typedef enum logic [3:0] {
 `ifdef ENABLE_LFSR
     XM_LFSR         = 4'hA,        // (R /W ) LFSR (random numbers)
 `else
-    XM_UNUSED_A     = 4'hA,        // (R /W ) unused direct register 0xA [TODO]
+    XM_MULT_MSW     = 4'hA,        // (R /W ) multiplication 16.16 fixed point MSW
 `endif
-    XM_UNUSED_B     = 4'hB,        // (R /W ) unused direct register 0xB [TODO]
+    XM_MULT_LSW     = 4'hB,        // (R /W ) multiplication 16.16 fixed point LSW
     XM_RW_INCR      = 4'hC,        // (R /W ) XM_RW_ADDR increment value on read/write of XM_RW_DATA/XM_RW_DATA_2
     XM_RW_ADDR      = 4'hD,        // (R /W+) read/write address for VRAM access from XM_RW_DATA/XM_RW_DATA_2
     XM_RW_DATA      = 4'hE,        // (R+/W+) read/write VRAM word at XM_RW_ADDR (and add XM_RW_INCR)
@@ -77,7 +77,7 @@ typedef enum logic [15:0] {
     XR_PA_REGS          = 16'h0010,     // 0x0010-0x0017 8 playfield A video registers
     XR_PB_REGS          = 16'h0018,     // 0x0000-0x001F 8 playfield B video registers
     XR_BLIT_REGS        = 16'h0020,     // 0x0020-0x002F 16 polygon blit registers      // TODO: blit
-    XR_DRAW_REGS        = 16'h0030,     // 0x0030-0x003F 16 polygon draw registers      // TODO: draw
+    XR_DRAW_REGS        = 16'h0030,     // 0x0030-0x003F 16 polygon draw registers
     // XR Memory Regions
     XR_COLOR_MEM        = 16'h8000,     // 0x8000-0x81FF 256 16-bit 0xXRGB color lookup playfield A & B
     XR_TILE_MEM         = 16'hA000,     // 0xA000-0xB3FF 5K 16-bit words of tile memory
@@ -131,7 +131,23 @@ typedef enum logic [5:0] {
     XR_BLIT_RD_ADDR = 6'h25,
     XR_BLIT_WR_ADDR = 6'h26,
     XR_BLIT_COUNT   = 6'h27
-    // TODO: draw registers 0x3x
+    // Draw XR Registers
+    XR_DRAW_COORDX0     = 6'h30,
+    XR_DRAW_COORDY0     = 6'h31,
+    XR_DRAW_COORDX1     = 6'h32,
+    XR_DRAW_COORDY1     = 6'h33,
+    XR_DRAW_COORDX2     = 6'h34,
+    XR_DRAW_COORDY2     = 6'h35,
+    XR_DRAW_COLOR       = 6'h36,
+    XR_DRAW_EXECUTE     = 6'h37,
+    XR_DRAW_DEST_ADDR   = 6'h38,
+    XR_DRAW_DEST_HEIGHT = 6'h39,
+    XR_DRAW_UNUSED_0A   = 6'h3A,
+    XR_DRAW_UNUSED_0B   = 6'h3B,
+    XR_DRAW_UNUSED_0C   = 6'h3C,
+    XR_DRAW_UNUSED_0D   = 6'h3D,
+    XR_DRAW_UNUSED_0E   = 6'h3E,
+    XR_DRAW_UNUSED_0F   = 6'h3F
 } xr_register_t;
 
 typedef enum logic [1:0] {
@@ -148,6 +164,12 @@ typedef enum {
     TILE_ATTR_FORE  = 8,    // rightmost bit for forecolor (in BPP_1 only)
     TILE_ATTR_BACK  = 12    // rightmost bit for backcolor (in BPP_1 only)
 } tile_index_attribute_bits_t;
+
+// Draw shapes
+typedef enum logic [3:0] {
+    DRAW_LINE                 = 4'h0,
+    DRAW_FILLED_TRIANGLE      = 4'h1
+} draw_shapes_t;
 
 `ifdef MODE_640x400     // 25.175 MHz (requested), 25.125 MHz (achieved)
 `elsif MODE_640x400_75  // 31.500 MHz (requested), 31.500 MHz (achieved)
@@ -178,6 +200,9 @@ localparam V_BACK_PORCH      = 35;          // V post-sync (back porch) lines
 localparam H_SYNC_POLARITY   = 1'b0;        // H sync pulse active level
 localparam V_SYNC_POLARITY   = 1'b1;        // V sync pulse active level
 
+// Primitive renderer module is available at this pixel clock
+`define DRAW_ENABLE
+
 `elsif    MODE_640x400_85
 // VGA mode 640x400 @ 85Hz (pixel clock 31.500Mhz)
 localparam PIXEL_FREQ        = 31_500_000;  // pixel clock in Hz
@@ -207,6 +232,9 @@ localparam V_SYNC_PULSE      = 2;           // V sync pulse lines
 localparam V_BACK_PORCH      = 33;          // V post-sync (back porch) lines
 localparam H_SYNC_POLARITY   = 1'b0;        // H sync pulse active level
 localparam V_SYNC_POLARITY   = 1'b0;        // V sync pulse active level
+
+// Primitive renderer module is available at this pixel clock
+`define DRAW_ENABLE
 
 `elsif    MODE_640x480_75
 // VGA mode 640x480 @ 75Hz (pixel clock 31.500Mhz)

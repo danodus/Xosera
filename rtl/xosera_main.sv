@@ -157,6 +157,9 @@ assign audio_l_o = 1'b0;
 assign audio_r_o = 1'b0;
 `endif
 
+// draw
+logic           draw_busy = 1'b0;       // is draw busy?
+
 // register interface for CPU access
 reg_interface reg_interface(
     // bus
@@ -178,7 +181,7 @@ reg_interface reg_interface(
     .regs_data_i(vram_data_out),        // 16-bit word read from vram
     .xr_data_i(xm_regs_data_in),           // 16-bit word read from XR
     //
-    .busy_i(1'b0),                      // TODO: blit/draw engine busy
+    .busy_i(draw_busy),                 // TODO: blit engine busy
     // reconfig
     .reconfig_o(reconfig_o),
     .boot_select_o(boot_select_o),
@@ -191,6 +194,28 @@ reg_interface reg_interface(
     .reset_i(reset_i),
     .clk(clk)
 );
+
+`ifdef DRAW_ENABLE
+// draw
+draw draw(
+    .oe_i(draw_vram_ack),                  // output enable
+
+    .draw_reg_wr_i(),                      // DRAW_TODO
+    .draw_reg_num_i(),                     // DRAW_TODO
+    .draw_reg_data_i(),                    // DRAW_TODO
+
+    .draw_vram_sel_o(draw_vram_sel),       // draw VRAM select
+    .draw_wr_o(draw_wr),                   // draw VRAM write
+    .draw_mask_o(draw_wr_mask),            // draw vram nibble masks
+    .draw_addr_o(draw_vram_addr),          // draw VRAM addr
+    .draw_data_out_o(draw_vram_data),      // draw bus VRAM data write
+
+    .busy_o(draw_busy),                    // is busy?
+
+    .clk(clk),                             // input clk
+    .reset_i(reset_i)                      // reset
+);
+`endif    
 
 //  video generation
 video_gen video_gen(

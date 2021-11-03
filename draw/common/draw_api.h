@@ -25,7 +25,7 @@
 
 #include <stdbool.h>
 
-void xd_init(bool hw_rasterizer, int start_line, int height);
+void xd_init(bool hw_rasterizer, int start_line, int width, int height);
 void xd_init_swap();
 void xd_swap(bool is_vsync_enabled);
 void xd_clear();

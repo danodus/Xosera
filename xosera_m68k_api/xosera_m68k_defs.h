@@ -109,9 +109,9 @@
 #define XR_DRAW_COLOR       0x36
 #define XR_DRAW_EXECUTE     0x37
 #define XR_DRAW_DEST_ADDR   0x38
-#define XR_DRAW_DEST_HEIGHT 0x39
-#define XR_DRAW_UNUSED_3A   0x3A
-#define XR_DRAW_UNUSED_3B   0x3B
+#define XR_DRAW_DEST_WIDTH  0x39
+#define XR_DRAW_DEST_HEIGHT 0x3A
+#define XR_DRAW_GFX_CTRL    0x3B
 #define XR_DRAW_UNUSED_3C   0x3C
 #define XR_DRAW_UNUSED_3D   0x3D
 #define XR_DRAW_UNUSED_3E   0x3E

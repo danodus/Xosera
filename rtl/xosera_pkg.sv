@@ -141,13 +141,13 @@ typedef enum logic [5:0] {
     XR_DRAW_COLOR       = 6'h36,
     XR_DRAW_EXECUTE     = 6'h37,
     XR_DRAW_DEST_ADDR   = 6'h38,
-    XR_DRAW_DEST_HEIGHT = 6'h39,
-    XR_DRAW_UNUSED_0A   = 6'h3A,
-    XR_DRAW_UNUSED_0B   = 6'h3B,
-    XR_DRAW_UNUSED_0C   = 6'h3C,
-    XR_DRAW_UNUSED_0D   = 6'h3D,
-    XR_DRAW_UNUSED_0E   = 6'h3E,
-    XR_DRAW_UNUSED_0F   = 6'h3F
+    XR_DRAW_DEST_WIDTH  = 6'h39,
+    XR_DRAW_DEST_HEIGHT = 6'h3A,
+    XR_DRAW_GFX_CTRL    = 6'h3B,
+    XR_DRAW_UNUSED_3C   = 6'h3C,
+    XR_DRAW_UNUSED_3D   = 6'h3D,
+    XR_DRAW_UNUSED_3E   = 6'h3E,
+    XR_DRAW_UNUSED_3F   = 6'h3F
 } xr_register_t;
 
 typedef enum logic [1:0] {
@@ -295,6 +295,9 @@ localparam V_SYNC_PULSE      = 8;           // V sync pulse lines
 localparam V_BACK_PORCH      = 23;          // V post-sync (back porch) lines
 localparam H_SYNC_POLARITY   = 1'b1;        // H sync pulse active level
 localparam V_SYNC_POLARITY   = 1'b1;        // V sync pulse active level
+
+// Primitive renderer module is available at this pixel clock
+`define DRAW_ENABLE
 
 `elsif    MODE_800x600
 // VGA mode 800x600 @ 60Hz (pixel clock 40.000Mhz)

@@ -35,7 +35,11 @@ logic start_line;
 logic start_filled_triangle;
 logic signed [11:0] x0, y0, x1, y1, x2, y2;
 logic        [15:0] dest_addr;
+logic        [11:0] dest_width;
 logic        [11:0] dest_height;
+/* verilator lint_off UNUSED */
+logic         [1:0] bpp;
+/* verilator lint_on UNUSED */
 logic signed [11:0] x, y;
 logic signed [11:0] x_line, y_line;
 logic signed [11:0] x_filled_triangle, y_filled_triangle;
@@ -45,11 +49,18 @@ logic drawing_line;
 logic drawing_filled_triangle;
 logic busy_line;
 logic busy_filled_triangle;
+/* verilator lint_off UNUSED */
 logic done;
 logic done_line;
 logic done_filled_triangle;
+/* verilator lint_on UNUSED */
 
-always_comb busy_o = busy_line || busy_filled_triangle;
+logic pipeline_valid[3];
+logic signed [11:0] pipeline_x[3];
+logic signed [11:0] pipeline_y[3];
+logic signed [7:0] pipeline_color[3];
+
+always_comb busy_o = busy_line || busy_filled_triangle || pipeline_valid[0] || pipeline_valid[1] || pipeline_valid[2];
 
 draw_line #(.CORDW(12)) draw_line (    // framebuffer coord width in bits
     .clk(clk),                         // clock
@@ -99,15 +110,6 @@ end
 
 always_ff @(posedge clk) begin
 
-    if (reset_i) begin
-        start_line <= 0;
-        start_filled_triangle <= 0;
-        draw_vram_sel_o <= 0;
-        draw_wr_o <= 0;
-        dest_addr <= 16'h0000;
-        dest_height <= xv::VISIBLE_HEIGHT / 2;
-    end
-
     if (draw_reg_wr_i) begin
         case(draw_reg_num_i[5:0])
             xv::XR_DRAW_COORDX0[5:0]      : x0          <= draw_reg_data_i[11:0];
@@ -127,33 +129,76 @@ always_ff @(posedge clk) begin
                 endcase
             end
             xv::XR_DRAW_DEST_ADDR[5:0]    : dest_addr   <= draw_reg_data_i[15:0];
+            xv::XR_DRAW_DEST_WIDTH[5:0]   : dest_width  <= draw_reg_data_i[11:0];
             xv::XR_DRAW_DEST_HEIGHT[5:0]  : dest_height <= draw_reg_data_i[11:0];
+            xv::XR_DRAW_GFX_CTRL[5:0]     : bpp         <= draw_reg_data_i[1:0];
             default: begin
                 // Do nothing
             end
         endcase
     end
 
-    if (drawing) begin
-        if (x >= 0 && y >= 0 && x < xv::VISIBLE_WIDTH / 2 && y < dest_height) begin
+    if (oe_i) begin
+        if (drawing) begin
+            pipeline_x[0] <= x;
+            pipeline_y[0] <= y;
+            pipeline_color[0] <= color;
+            pipeline_valid[0] <= 1;
+        end else begin
+            pipeline_valid[0] <= 0;
+        end
+
+        if (pipeline_valid[0] && pipeline_x[0] >= 0 && pipeline_y[0] >= 0) begin
+            pipeline_x[1] <= pipeline_x[0];
+            pipeline_y[1] <= pipeline_y[0];
+            pipeline_color[1] <= pipeline_color[0];
+            pipeline_valid[1] <= 1;
+        end else begin
+            pipeline_valid[1] <= 0;
+        end
+
+        if (pipeline_valid[1] && pipeline_x[1] < dest_width && pipeline_y[1] < dest_height) begin
+            pipeline_x[2] <= pipeline_x[1];
+            pipeline_y[2] <= pipeline_y[1];
+            pipeline_color[2] <= pipeline_color[1];
+            pipeline_valid[2] <= 1;
+        end else begin
+            pipeline_valid[2] <= 0;
+        end
+
+        if (pipeline_valid[2]) begin
             draw_vram_sel_o <= 1;
             draw_wr_o <= 1;
-            draw_mask_o <= (x & 12'h001) != 12'h000 ? 4'b0011 : 4'b1100;
-            draw_addr_o <= dest_addr + {4'b0, y} * (xv::VISIBLE_WIDTH / 4) + {4'b0, x} / 2;
-            draw_data_out_o <= {color[7:0], color[7:0]};
+            draw_mask_o <= (pipeline_x[2] & 12'h001) != 12'h000 ? 4'b0011 : 4'b1100;
+            draw_addr_o <= dest_addr + {4'b0, pipeline_y[2]} * ({4'b0, dest_width} / 2) + {4'b0, pipeline_x[2]} / 2;
+            draw_data_out_o <= {pipeline_color[2], pipeline_color[2]};
         end else begin
             draw_vram_sel_o <= 0;
             draw_wr_o <= 0;
         end
     end
 
-    if (done) begin
+    if (!busy_o) begin
         draw_vram_sel_o <= 0;
         draw_wr_o <= 0;
     end
 
     if (start_line) start_line <= 0;
     if (start_filled_triangle) start_filled_triangle <= 0;
+
+    if (reset_i) begin
+        start_line <= 0;
+        start_filled_triangle <= 0;
+        draw_vram_sel_o <= 0;
+        draw_wr_o <= 0;
+        dest_addr <= 16'h0000;
+        dest_width <= xv::VISIBLE_WIDTH / 2;
+        dest_height <= xv::VISIBLE_HEIGHT / 2;
+        bpp <= xv::BPP_8;
+        pipeline_valid[0] <= 0;
+        pipeline_valid[1] <= 0;
+        pipeline_valid[2] <= 0;
+    end
 end
 
 endmodule

@@ -32,39 +32,46 @@ module draw_line #(parameter CORDW=10) (                // framebuffer coord wid
     logic signed [CORDW:0] err;         // a bit wider as signed
     logic signed [CORDW:0] dx, dy;
     logic movx, movy;   // horizontal/vertical move required
-    always_comb begin
-        movx = (2*err >= dy);
-        movy = (2*err <= dx);
-    end
+    logic is_drawing;
     
     // draw state machine
-    enum {IDLE, INIT_0, INIT_1, DRAW} state;
-    always_comb drawing_o = (state == DRAW && oe_i);
+    enum {IDLE, INIT_0, INIT_1, DRAW_0, DRAW_1, DRAW_2} state;
+    always_comb drawing_o = (is_drawing && oe_i);
 
     always_ff @(posedge clk) begin
         case (state)
-            DRAW: begin
+            DRAW_0: begin
                 if (oe_i) begin
                     if (x_o == x1_i && y_o == y1_i) begin
                         state <= IDLE;
+                        is_drawing <= 0;
                         busy_o <= 0;
                         done_o <= 1;
                     end else begin
-                        if (movx) begin
-                            x_o <= right ? x_o + 1 : x_o - 1;
-                            err <= err + dy;
-                        end
-                        if (movy) begin
-                            y_o <= y_o + 1; // always down
-                            err <= err + dx;                            
-                        end
-                        if (movx && movy) begin
-                            x_o <= right ? x_o + 1 : x_o - 1;
-                            y_o <= y_o + 1;
-                            err <= err + dy + dx;                            
-                        end
+                        state <= DRAW_1;
                     end
                 end
+            end
+            DRAW_1: begin
+                movx <= (2*err >= dy);
+                movy <= (2*err <= dx);
+                state <= DRAW_2;
+            end
+            DRAW_2: begin
+                if (movx) begin
+                    x_o <= right ? x_o + 1 : x_o - 1;
+                    err <= err + dy;
+                end
+                if (movy) begin
+                    y_o <= y_o + 1; // always down
+                    err <= err + dx;                            
+                end
+                if (movx && movy) begin
+                    x_o <= right ? x_o + 1 : x_o - 1;
+                    y_o <= y_o + 1;
+                    err <= err + dy + dx;                            
+                end
+                state <= DRAW_0;
             end
             INIT_0: begin
                 state <= INIT_1;
@@ -72,7 +79,8 @@ module draw_line #(parameter CORDW=10) (                // framebuffer coord wid
                 dy <= y0_i - y1_i;                          // dy = y0_i - y1_i
             end
             INIT_1: begin
-                state <= DRAW;
+                state <= DRAW_0;
+                is_drawing <= 1;
                 err <= dx + dy;
                 x_o <= x0_i;
                 y_o <= y0_i;
@@ -91,6 +99,7 @@ module draw_line #(parameter CORDW=10) (                // framebuffer coord wid
             state <= IDLE;
             busy_o <= 0;
             done_o <= 0;
+            is_drawing <= 0;
         end
     end
 endmodule

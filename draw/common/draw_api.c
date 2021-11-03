@@ -29,13 +29,11 @@
 
 #include <draw.h>
 
-#define MAX_WIDTH  320
-#define MAX_HEIGHT 200
-
 extern volatile uint32_t XFrameCount;
 
 static uint8_t  g_disp_buffer;
 static uint16_t g_start_line;
+static uint16_t g_width;
 static uint16_t g_height;
 static uint16_t g_first_disp_buffer_addr, g_second_disp_buffer_addr;
 static uint16_t g_cur_draw_buffer_addr;
@@ -71,9 +69,9 @@ static void draw_pixel(int x, int y, int color)
     uint16_t ux = x;
     uint16_t uy = y;
     uint8_t  uc = color;
-    if (ux < MAX_WIDTH && uy < g_height)
+    if (ux < g_width && uy < g_height)
     {
-        uint16_t addr = g_cur_draw_buffer_addr + (uy * (MAX_WIDTH / 2)) + (ux / 2);
+        uint16_t addr = g_cur_draw_buffer_addr + (uy * (g_width / 2)) + (ux / 2);
         xm_setw(WR_ADDR, addr);
         xm_setw(SYS_CTRL, (ux & 1) ? 0x0308 : 0x0C08);
 
@@ -82,13 +80,15 @@ static void draw_pixel(int x, int y, int color)
     }
 }
 
-void xd_init(bool hw_rasterizer, int start_line, int height)
+void xd_init(bool hw_rasterizer, int start_line, int width, int height)
 {
     sw_init_rasterizer(draw_pixel);
     g_hw_rasterizer = hw_rasterizer;
     g_start_line    = start_line;
+    g_width         = width;
     g_height        = height;
     xd_wait_done();
+    xreg_setw(DRAW_DEST_WIDTH, width);
     xreg_setw(DRAW_DEST_HEIGHT, height);
 }
 
@@ -96,8 +96,8 @@ void xd_init_swap()
 {
     g_disp_buffer = 0;
 
-    g_first_disp_buffer_addr  = g_start_line * MAX_WIDTH / 2;
-    g_second_disp_buffer_addr = g_first_disp_buffer_addr + g_height * MAX_WIDTH / 2;
+    g_first_disp_buffer_addr  = g_start_line * g_width / 2;
+    g_second_disp_buffer_addr = g_first_disp_buffer_addr + g_height * g_width / 2;
 
     xreg_setw(PA_DISP_ADDR, g_first_disp_buffer_addr);
     // xreg_setw(PA_LINE_ADDR, 0x0000);
@@ -130,7 +130,7 @@ void xd_swap(bool is_vsync_enabled)
 void xd_clear()
 {
     // temp hack, always accelerated
-    hw_draw_filled_rectangle(0, 0, MAX_WIDTH, g_height - 1, 1);
+    hw_draw_filled_rectangle(0, 0, g_width - 1, g_height - 1, 1);
 }
 
 void xd_finish()

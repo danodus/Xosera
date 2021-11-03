@@ -582,7 +582,7 @@ void xosera_demo()
     // set black background
     xreg_setw(VID_CTRL, 0x0000);
 
-    xd_init(true, 0, 200);
+    xd_init(true, 0, 320, 200);
 
     calc_palette_color();
     set_palette(0.0f);

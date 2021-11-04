@@ -87,7 +87,7 @@ typedef float fx32;
 
 typedef struct
 {
-    fx32 x, y, z;
+    fx32 x, y, z, w;
 } vec3d;
 
 typedef struct
@@ -123,10 +123,23 @@ typedef struct
     triangle_t * triangles_to_raster;
 } model_t;
 
-void multiply_matrix_vector(vec3d * i, vec3d * o, mat4x4 * m);
-void get_projection_matrix(int viewport_width, int viewport_height, float fov, mat4x4 * mat_proj);
-void get_rotation_z_matrix(float theta, mat4x4 * mat_rot_z);
-void get_rotation_x_matrix(float theta, mat4x4 * mat_rot_x);
+vec3d matrix_multiply_vector(mat4x4 * m, vec3d * i);
+vec3d vector_add(vec3d * v1, vec3d * v2);
+vec3d vector_sub(vec3d * v1, vec3d * v2);
+vec3d vector_mul(vec3d * v1, fx32 k);
+vec3d vector_div(vec3d * v1, fx32 k);
+fx32  vector_dot_product(vec3d * v1, vec3d * v2);
+fx32  vector_length(vec3d * v);
+vec3d vector_normalize(vec3d * v);
+vec3d vector_cross_product(vec3d * v1, vec3d * v2);
+
+mat4x4 matrix_make_identity();
+mat4x4 matrix_make_projection(int viewport_width, int viewport_height, float fov);
+mat4x4 matrix_make_rotation_x(float theta);
+mat4x4 matrix_make_rotation_y(float theta);
+mat4x4 matrix_make_rotation_z(float theta);
+mat4x4 matrix_make_translation(fx32 x, fx32 y, fx32 z);
+
 void draw_model(int       viewport_width,
                 int       viewport_height,
                 model_t * model,

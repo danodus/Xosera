@@ -5,7 +5,8 @@ LDFLAGS		:= $(shell sdl2-config --libs) -lm
 SDL_CFLAGS	:= $(shell sdl2-config --cflags)
 
 #CFLAGS		:= -Os -std=c99 -Wall -Wextra -Werror $(SDL_CFLAGS)
-CFLAGS		:= -Os -std=c99 $(SDL_CFLAGS) -I../common
+#CFLAGS		:= -Os -std=c99 $(SDL_CFLAGS) -I../common
+CFLAGS		:= -g -std=c99 $(SDL_CFLAGS) -I../common
 
 all: draw_ref_impl
 

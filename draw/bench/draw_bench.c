@@ -257,9 +257,9 @@ void bench(BenchType bench_type)
         case CUBE:
         case TEAPOT: {
             mat4x4 mat_proj, mat_rot_z, mat_rot_x;
-            get_projection_matrix(320, 199, 60.0f, &mat_proj);
-            get_rotation_x_matrix(3.141592654f, &mat_rot_x);
-            get_rotation_z_matrix(0.0f, &mat_rot_z);
+            mat_proj  = matrix_make_projection(320, 199, 60.0f);
+            mat_rot_x = matrix_make_rotation_x(3.141592654f);
+            mat_rot_z = matrix_make_rotation_z(0.0f);
             if (bench_type == CUBE)
             {
                 draw_model(320, 199, cube_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);

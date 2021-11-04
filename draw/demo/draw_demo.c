@@ -531,15 +531,15 @@ void demo_model(int nb_iterations, model_type_t model)
     float  theta = 0.0f;
     mat4x4 mat_proj, mat_rot_z, mat_rot_x;
 
-    get_projection_matrix(320, 200, 60.0f, &mat_proj);
+    mat_proj = matrix_make_projection(320, 200, 60.0f);
 
     for (int i = 0; i < nb_iterations; ++i)
     {
 
         xd_clear();
 
-        get_rotation_z_matrix(theta, &mat_rot_z);
-        get_rotation_x_matrix(theta, &mat_rot_x);
+        mat_rot_z = matrix_make_rotation_z(theta);
+        mat_rot_x = matrix_make_rotation_x(theta);
 
         if (model == MODEL_CUBE)
         {

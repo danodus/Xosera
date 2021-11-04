@@ -27,8 +27,8 @@
 #include <sw_rasterizer.h>
 #include <teapot.h>
 
-static int screen_width  = 320;
-static int screen_height = 200;
+static int screen_width  = 1280;
+static int screen_height = 800;
 
 static SDL_Renderer * renderer;
 
@@ -66,7 +66,7 @@ int main(int argc, char * argv[])
     SDL_Init(SDL_INIT_VIDEO);
 
     SDL_Window * window = SDL_CreateWindow("Xosera Draw Reference Implementation",
-                                           SDL_WINDOWPOS_UNDEFINED,
+                                           SDL_WINDOWPOS_CENTERED_DISPLAY(1),
                                            SDL_WINDOWPOS_UNDEFINED,
                                            screen_width,
                                            screen_height,
@@ -80,28 +80,33 @@ int main(int argc, char * argv[])
     int       quit = 0;
 
     // Projection matrix
-    mat4x4 mat_proj;
-    get_projection_matrix(screen_width, screen_height, 60.0f, &mat_proj);
+    mat4x4 mat_proj = matrix_make_projection(screen_width, screen_height, 60.0f);
 
     mat4x4 mat_rot_z, mat_rot_x;
 
     float theta = 0.0f;
 
     model_t * teapot_model = load_teapot();
+    model_t * cube_model   = load_cube();
 
     while (!quit)
     {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
 
+        unsigned int time = SDL_GetTicks();
+
         // Rotation Z
-        get_rotation_z_matrix(theta, &mat_rot_z);
+        mat_rot_z = matrix_make_rotation_z(theta);
 
         // Rotation X
-        get_rotation_x_matrix(theta, &mat_rot_x);
+        mat_rot_x = matrix_make_rotation_x(theta);
 
         // Draw teapot
         draw_model(screen_width, screen_height, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
+        // draw_model(screen_width, screen_height, cube_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
+
+        printf("%d ms\n", SDL_GetTicks() - time);
 
         SDL_RenderPresent(renderer);
 

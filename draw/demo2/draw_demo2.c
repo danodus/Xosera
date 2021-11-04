@@ -205,14 +205,14 @@ void demo_model(int nb_iterations)
     float  theta = 0.0f;
     mat4x4 mat_proj, mat_rot_z, mat_rot_x;
 
-    get_projection_matrix(width, height, 60.0f, &mat_proj);
+    mat_proj = matrix_make_projection(width, height, 60.0f);
 
     for (int i = 0; i < nb_iterations; ++i)
     {
         xd_clear();
 
-        get_rotation_z_matrix(theta, &mat_rot_z);
-        get_rotation_x_matrix(theta, &mat_rot_x);
+        mat_rot_z = matrix_make_rotation_z(theta);
+        mat_rot_x = matrix_make_rotation_x(theta, &mat_rot_x);
 
         draw_model(width, height, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, false, true);
         delay(4000);

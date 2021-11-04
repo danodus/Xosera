@@ -133,6 +133,7 @@ void draw_model(int       viewport_width,
                 mat4x4 *  mat_projection,
                 mat4x4 *  mat_rot_z,
                 mat4x4 *  mat_rot_x,
-                bool      is_lighting_ena);
+                bool      is_lighting_ena,
+                bool      is_wireframe);
 
 #endif

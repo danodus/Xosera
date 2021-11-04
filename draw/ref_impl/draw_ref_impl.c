@@ -101,7 +101,7 @@ int main(int argc, char * argv[])
         get_rotation_x_matrix(theta, &mat_rot_x);
 
         // Draw teapot
-        draw_model(screen_width, screen_height, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true);
+        draw_model(screen_width, screen_height, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
 
         SDL_RenderPresent(renderer);
 

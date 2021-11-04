@@ -262,11 +262,11 @@ void bench(BenchType bench_type)
             get_rotation_z_matrix(0.0f, &mat_rot_z);
             if (bench_type == CUBE)
             {
-                draw_model(320, 199, cube_model, &mat_proj, &mat_rot_z, &mat_rot_x, true);
+                draw_model(320, 199, cube_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
             }
             else
             {
-                draw_model(320, 199, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true);
+                draw_model(320, 199, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
             }
         }
         break;

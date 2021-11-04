@@ -35,6 +35,7 @@ static uint8_t  g_disp_buffer;
 static uint16_t g_start_line;
 static uint16_t g_width;
 static uint16_t g_height;
+static uint8_t  g_bpp;
 static uint16_t g_first_disp_buffer_addr, g_second_disp_buffer_addr;
 static uint16_t g_cur_draw_buffer_addr;
 
@@ -80,16 +81,18 @@ static void draw_pixel(int x, int y, int color)
     }
 }
 
-void xd_init(bool hw_rasterizer, int start_line, int width, int height)
+void xd_init(bool hw_rasterizer, int start_line, int width, int height, int bpp)
 {
     sw_init_rasterizer(draw_pixel);
     g_hw_rasterizer = hw_rasterizer;
     g_start_line    = start_line;
     g_width         = width;
     g_height        = height;
+    g_bpp           = bpp;
     xd_wait_done();
     xreg_setw(DRAW_DEST_WIDTH, width);
     xreg_setw(DRAW_DEST_HEIGHT, height);
+    xreg_setw(DRAW_GFX_CTRL, bpp == 4 ? 0x0001 : 0x0002);
 }
 
 void xd_init_swap()

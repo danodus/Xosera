@@ -37,9 +37,7 @@ logic signed [11:0] x0, y0, x1, y1, x2, y2;
 logic        [15:0] dest_addr;
 logic        [11:0] dest_width;
 logic        [11:0] dest_height;
-/* verilator lint_off UNUSED */
 logic         [1:0] bpp;
-/* verilator lint_on UNUSED */
 logic signed [11:0] x, y;
 logic signed [11:0] x_line, y_line;
 logic signed [11:0] x_filled_triangle, y_filled_triangle;
@@ -169,9 +167,16 @@ always_ff @(posedge clk) begin
         if (pipeline_valid[2]) begin
             draw_vram_sel_o <= 1;
             draw_wr_o <= 1;
-            draw_mask_o <= (pipeline_x[2] & 12'h001) != 12'h000 ? 4'b0011 : 4'b1100;
-            draw_addr_o <= dest_addr + {4'b0, pipeline_y[2]} * ({4'b0, dest_width} / 2) + {4'b0, pipeline_x[2]} / 2;
-            draw_data_out_o <= {pipeline_color[2], pipeline_color[2]};
+            if (bpp == xv::BPP_4) begin
+                draw_mask_o <= 4'b1000 >> pipeline_x[2][1:0];
+                draw_addr_o <= dest_addr + {4'b0, pipeline_y[2]} * ({4'b0, dest_width} / 4) + {4'b0, pipeline_x[2]} / 4;
+                draw_data_out_o <= {pipeline_color[2][3:0], pipeline_color[2][3:0], pipeline_color[2][3:0], pipeline_color[2][3:0]};
+            end else begin
+                // 8-bpp
+                draw_mask_o <= (pipeline_x[2] & 12'h001) != 12'h000 ? 4'b0011 : 4'b1100;
+                draw_addr_o <= dest_addr + {4'b0, pipeline_y[2]} * ({4'b0, dest_width} / 2) + {4'b0, pipeline_x[2]} / 2;
+                draw_data_out_o <= {pipeline_color[2], pipeline_color[2]};
+            end
         end else begin
             draw_vram_sel_o <= 0;
             draw_wr_o <= 0;

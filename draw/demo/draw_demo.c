@@ -90,11 +90,11 @@ const uint16_t copper_list[]   = {
     0x0028,
     0x0002,        // wait  0, 40                   ; Wait for line 40, H position ignored
     0x9010,
-    0x0075,        // mover 0x0075, PA_GFX_CTRL     ; Set to 8-bpp + Hx2 + Vx2
+    0x0065,        // mover 0x0065, PA_GFX_CTRL     ; Set to 8-bpp + Hx2 + Vx2
     0x01b8,
     0x0002,        // wait  0, 440                  ; Wait for line 440, H position ignored
     0x9010,
-    0x00F5,        // mover 0x00F5, PA_GFX_CTRL     ; Blank
+    0x00D5,        // mover 0x00E5, PA_GFX_CTRL     ; Blank
     0x0000,
     0x0003        // nextf
 };
@@ -543,11 +543,11 @@ void demo_model(int nb_iterations, model_type_t model)
 
         if (model == MODEL_CUBE)
         {
-            draw_model(320, 200, cube_model, &mat_proj, &mat_rot_z, &mat_rot_x, true);
+            draw_model(320, 200, cube_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
         }
         else
         {
-            draw_model(320, 200, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true);
+            draw_model(320, 200, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
         }
 
         xd_swap(true);
@@ -582,7 +582,7 @@ void xosera_demo()
     // set black background
     xreg_setw(VID_CTRL, 0x0000);
 
-    xd_init(true, 0, 320, 200);
+    xd_init(true, 0, 320, 200, 8);
 
     calc_palette_color();
     set_palette(0.0f);

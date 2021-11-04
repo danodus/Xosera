@@ -39,6 +39,9 @@
 #include <teapot.h>
 #include <xosera_m68k_api.h>
 
+// Note: Not enough memory for full 848x480
+#define MODE_848_480 1
+
 extern void install_intr(void);
 extern void remove_intr(void);
 
@@ -69,6 +72,27 @@ int8_t   text_v;
 uint8_t  text_color = 0x02;        // dark green on black
 
 model_t * teapot_model;
+
+#if MODE_848_480
+const int width = 848;
+#else
+const int width = 640;
+#endif
+const int height = 300;
+
+const uint8_t  copper_list_len = 10;
+const uint16_t copper_list[]   = {
+    0x005A,
+    0x0002,        // wait  0, 90                   ; Wait for line 90, H position ignored
+    0x9010,
+    0x0050,        // mover 0x0050, PA_GFX_CTRL     ; Set to 4-bpp
+    0x0186,
+    0x0002,        // wait  0, 390                  ; Wait for line 390, H position ignored
+    0x9010,
+    0x00D0,        // mover 0x00D0, PA_GFX_CTRL     ; Blank
+    0x0000,
+    0x0003        // nextf
+};
 
 static void get_textmode_settings()
 {
@@ -181,7 +205,7 @@ void demo_model(int nb_iterations)
     float  theta = 0.0f;
     mat4x4 mat_proj, mat_rot_z, mat_rot_x;
 
-    get_projection_matrix(424, 240, 60.0f, &mat_proj);
+    get_projection_matrix(width, height, 60.0f, &mat_proj);
 
     for (int i = 0; i < nb_iterations; ++i)
     {
@@ -190,7 +214,7 @@ void demo_model(int nb_iterations)
         get_rotation_z_matrix(theta, &mat_rot_z);
         get_rotation_x_matrix(theta, &mat_rot_x);
 
-        draw_model(424, 240, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true);
+        draw_model(width, height, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, false, true);
         delay(4000);
 
         theta += 0.1f;
@@ -202,18 +226,29 @@ void xosera_demo()
     // allocations
     teapot_model = load_teapot();
 
+#if MODE_848_480
     xosera_init(1);
+#else
+    xosera_init(0);
+#endif
 
     install_intr();
 
     xreg_setw(PA_DISP_ADDR, 0x0000);
     xreg_setw(PA_LINE_ADDR, 0x0000);
-    xreg_setw(PA_LINE_LEN, 212);
+    xreg_setw(PA_LINE_LEN, width / 4);
 
     // set black background
     xreg_setw(VID_CTRL, 0x0000);
 
-    xd_init(true, 0, 424, 240);
+    xm_setw(XR_ADDR, XR_COPPER_MEM);
+
+    for (uint8_t i = 0; i < copper_list_len; i++)
+    {
+        xm_setw(XR_DATA, copper_list[i]);
+    }
+
+    xd_init(true, 0, width, height, 4);
 
     while (1)
     {
@@ -226,8 +261,12 @@ void xosera_demo()
         xprintf("Xosera\nDraw\nDemo\n2\n");
         delay(2000);
 
-        xreg_setw(PA_GFX_CTRL, 0x0075);
+        // enable Copper
+        xreg_setw(COPP_CTRL, 0x8000);
 
         demo_model(100);
+
+        // disable Copper
+        xreg_setw(COPP_CTRL, 0x0000);
     }
 }

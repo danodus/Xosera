@@ -151,7 +151,8 @@ void draw_model(int       viewport_width,
                 mat4x4 *  mat_proj,
                 mat4x4 *  mat_rot_z,
                 mat4x4 *  mat_rot_x,
-                bool      is_lighting_ena)
+                bool      is_lighting_ena,
+                bool      is_wireframe)
 {
     vec3d vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f)};
 
@@ -285,12 +286,15 @@ void draw_model(int       viewport_width,
                                 INT(tri_projected.p[2].y),
                                 INT(col));
 
-        /*xd_draw_triangle(INT(tri_projected.p[0].x),
-                      INT(tri_projected.p[0].y),
-                      INT(tri_projected.p[1].x),
-                      INT(tri_projected.p[1].y),
-                      INT(tri_projected.p[2].x),
-                      INT(tri_projected.p[2].y),
-                      255);*/
+        if (is_wireframe)
+        {
+            xd_draw_triangle(INT(tri_projected.p[0].x),
+                             INT(tri_projected.p[0].y),
+                             INT(tri_projected.p[1].x),
+                             INT(tri_projected.p[1].y),
+                             INT(tri_projected.p[2].x),
+                             INT(tri_projected.p[2].y),
+                             0);
+        }
     }
 }

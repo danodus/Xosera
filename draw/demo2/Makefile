@@ -14,7 +14,8 @@ EXTRA_CFLAGS?=-g -O3 -fomit-frame-pointer
 #EXTRA_VASMFLAGS?=-showopt
 SYSINCDIR?=$(ROSCO_M68K_DIR)/code/software/libs/build/include
 SYSLIBDIR?=$(ROSCO_M68K_DIR)/code/software/libs/build/lib
-DEFINES=-DROSCO_M68K -DHW_MULT
+#DEFINES=-DROSCO_M68K -DHW_MULT
+DEFINES=-DROSCO_M68K
 CFLAGS=-std=c99 -ffreestanding -ffunction-sections -fdata-sections \
     -Wall -Wextra -Wno-unused-function -I$(SYSINCDIR) \
     -I$(XOSERA_M68K_API) -I$(COMMON) \

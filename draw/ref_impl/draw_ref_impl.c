@@ -89,12 +89,17 @@ int main(int argc, char * argv[])
     model_t * teapot_model = load_teapot();
     model_t * cube_model   = load_cube();
 
+    vec3d vec_up     = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
+    vec3d vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+
+    unsigned int time = SDL_GetTicks();
+
+    float yaw = 0.0f;
+
     while (!quit)
     {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
-
-        unsigned int time = SDL_GetTicks();
 
         // Rotation Z
         mat_rot_z = matrix_make_rotation_z(theta);
@@ -102,13 +107,45 @@ int main(int argc, char * argv[])
         // Rotation X
         mat_rot_x = matrix_make_rotation_x(theta);
 
-        // Draw teapot
-        draw_model(screen_width, screen_height, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
-        // draw_model(screen_width, screen_height, cube_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
+        vec3d  vec_target     = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
+        mat4x4 mat_camera_rot = matrix_make_rotation_y(yaw);
+        vec3d  vec_look_dir   = matrix_multiply_vector(&mat_camera_rot, &vec_target);
+        vec_target            = vector_add(&vec_camera, &vec_look_dir);
 
-        printf("%d ms\n", SDL_GetTicks() - time);
+        mat4x4 mat_camera = matrix_point_at(&vec_camera, &vec_target, &vec_up);
+
+        // make view matrix from camera
+        mat4x4 mat_view = matrix_quick_inverse(&mat_camera);
+
+
+        // Draw teapot
+
+        draw_model(screen_width,
+                   screen_height,
+                   &vec_camera,
+                   teapot_model,
+                   &mat_proj,
+                   &mat_view,
+                   &mat_rot_z,
+                   &mat_rot_x,
+                   true,
+                   false);
+        // draw_model(screen_width,
+        //            screen_height,
+        //            &vec_camera,
+        //            cube_model,
+        //            &mat_proj,
+        //            &mat_view,
+        //            &mat_rot_z,
+        //            &mat_rot_x,
+        //            true,
+        //            false);
 
         SDL_RenderPresent(renderer);
+
+        // printf("%d ms\n", SDL_GetTicks() - time);
+        float elapsed_time = (float)(SDL_GetTicks() - time) / 1000.0f;
+        time               = SDL_GetTicks();
 
         while (SDL_PollEvent(&e))
         {
@@ -118,12 +155,45 @@ int main(int argc, char * argv[])
             }
             else if (e.type == SDL_KEYDOWN)
             {
-                if (e.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
-                    quit = 1;
+                vec3d vec_forward = vector_mul(&vec_look_dir, MUL(FX(8.0f), FX(elapsed_time)));
+                switch (e.key.keysym.scancode)
+                {
+                    case SDL_SCANCODE_ESCAPE:
+                        quit = 1;
+                        break;
+
+                    case SDL_SCANCODE_UP:
+                        vec_camera.y += MUL(FX(8.0f), FX(elapsed_time));
+                        break;
+                    case SDL_SCANCODE_DOWN:
+                        vec_camera.y -= MUL(FX(8.0f), FX(elapsed_time));
+                        break;
+                    case SDL_SCANCODE_LEFT:
+                        vec_camera.x -= MUL(FX(8.0f), FX(elapsed_time));
+                        break;
+                    case SDL_SCANCODE_RIGHT:
+                        vec_camera.x += MUL(FX(8.0f), FX(elapsed_time));
+                        break;
+                    case SDL_SCANCODE_W:
+                        vec_camera = vector_add(&vec_camera, &vec_forward);
+                        break;
+                    case SDL_SCANCODE_S:
+                        vec_camera = vector_sub(&vec_camera, &vec_forward);
+                        break;
+                    case SDL_SCANCODE_A:
+                        yaw -= 2.0f * elapsed_time;
+                        break;
+                    case SDL_SCANCODE_D:
+                        yaw += 2.0f * elapsed_time;
+                        break;
+                    default:
+                        // do nothing
+                        break;
+                }
             }
         }
 
-        theta += 0.001f;
+        // theta += 0.001f;
     }
 
     SDL_DestroyWindow(window);

@@ -20,6 +20,9 @@
  * ------------------------------------------------------------
  */
 
+// Based on One Lone Coder 3D Graphics Engine tutorial series
+// Part #3: https://www.youtube.com/watch?v=HXSuNxpCzdM&t=856s
+
 #include "draw.h"
 
 #include <math.h>
@@ -96,6 +99,133 @@ vec3d vector_cross_product(vec3d * v1, vec3d * v2)
                MUL(v1->x, v2->y) - MUL(v1->y, v2->x),
                FX(1.0f)};
     return r;
+}
+
+vec3d vector_intersect_plane(vec3d * plane_p, vec3d * plane_n, vec3d * line_start, vec3d * line_end)
+{
+    *plane_n                = vector_normalize(plane_n);
+    fx32  plane_d           = -vector_dot_product(plane_n, plane_p);
+    fx32  ad                = vector_dot_product(line_start, plane_n);
+    fx32  bd                = vector_dot_product(line_end, plane_n);
+    fx32  t                 = DIV(-plane_d - ad, bd - ad);
+    vec3d line_start_to_end = vector_sub(line_end, line_start);
+    vec3d line_to_intersect = vector_mul(&line_start_to_end, t);
+    return vector_add(line_start, &line_to_intersect);
+}
+
+// return signed shortest distance from point to plane, plane normal must be normalized
+fx32 dist_point_to_plane(vec3d * plane_p, vec3d * plane_n, vec3d * p)
+{
+    return (MUL(plane_n->x, p->x) + MUL(plane_n->y, p->y) + MUL(plane_n->z, p->z) -
+            vector_dot_product(plane_n, plane_p));
+}
+
+int triangle_clip_against_plane(vec3d        plane_p,
+                                vec3d        plane_n,
+                                triangle_t * in_tri,
+                                triangle_t * out_tri1,
+                                triangle_t * out_tri2)
+{
+    // make sure plane normal is indeed normal
+    plane_n = vector_normalize(&plane_n);
+
+    // create two temporary storage arrays to classify points either side of the plane
+    // if distance sign is positive, point lies on the inside of plane
+    vec3d * inside_points[3];
+    int     nb_inside_points = 0;
+    vec3d * outside_points[3];
+    int     nb_outside_points = 0;
+
+    // get signed distance of each point in triangle to plane
+    fx32 d0 = dist_point_to_plane(&plane_p, &plane_n, &in_tri->p[0]);
+    fx32 d1 = dist_point_to_plane(&plane_p, &plane_n, &in_tri->p[1]);
+    fx32 d2 = dist_point_to_plane(&plane_p, &plane_n, &in_tri->p[2]);
+
+    if (d0 >= FX(0.0f))
+    {
+        inside_points[nb_inside_points++] = &in_tri->p[0];
+    }
+    else
+    {
+        outside_points[nb_outside_points++] = &in_tri->p[0];
+    }
+    if (d1 >= FX(0.0f))
+    {
+        inside_points[nb_inside_points++] = &in_tri->p[1];
+    }
+    else
+    {
+        outside_points[nb_outside_points++] = &in_tri->p[1];
+    }
+    if (d2 >= FX(0.0f))
+    {
+        inside_points[nb_inside_points++] = &in_tri->p[2];
+    }
+    else
+    {
+        outside_points[nb_outside_points++] = &in_tri->p[2];
+    }
+
+    // classify triangle points and break the input triangle into smaller output triangles if required
+
+    if (nb_inside_points == 0)
+    {
+        // all points lie on the outside of the plane, so clip whole triangle
+        return 0;        // no returned triangles are valid
+    }
+
+    if (nb_inside_points == 3)
+    {
+        // all points lie in the inside of plane, so do nothing and allow the triangle to simply pass through
+        out_tri1 = in_tri;
+
+        return 1;        // just the one returned original triangle is valid
+    }
+
+    if (nb_inside_points == 1 && nb_outside_points == 2)
+    {
+        // Triangle should be clipped. As two points lie outside the plane, the triangle simply becomes a smaller
+        // triangle.
+
+        // copy appearance info to the new triangle
+        out_tri1->col = in_tri->col;
+
+        // the inside point is valid, so keep that
+        out_tri1->p[0] = *inside_points[0];
+
+        // but the two new points are at the location where the original sides of the triangle (lines) intersect with
+        // the plane
+        out_tri1->p[1] = vector_intersect_plane(&plane_p, &plane_n, inside_points[0], outside_points[0]);
+        out_tri1->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[0], outside_points[1]);
+
+        return 1;        // return the newly formed single triangle
+    }
+
+    if (nb_inside_points == 2 && nb_outside_points == 1)
+    {
+        // Triangle should be clipped. As two points lie inside the plane, the clipped triangle becomes a "quad".
+        // Fortunately, we can represent a quad with two new triangles.
+
+        // Copy appearance info to new triangle
+        out_tri1->col = in_tri->col;
+        out_tri2->col = in_tri->col;
+
+        // The first triangle consists of the two inside points and a new point determined by the location where one
+        // side of the triangle intersects with the plane
+        out_tri1->p[0] = *inside_points[0];
+        out_tri1->p[1] = *inside_points[1];
+        out_tri1->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[0], outside_points[0]);
+
+        // The second triangle is composed of one the the inside points, a new point determined by the intersection of
+        // the other side of the triangle and the plane, and the newly created point above
+        out_tri2->p[0] = *inside_points[1];
+        out_tri2->p[1] = out_tri1->p[2];
+        out_tri2->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[1], outside_points[0]);
+
+        return 2;        // return two newly formed triangles which form a quad
+    }
+
+    return 0;        // should not happen
 }
 
 mat4x4 matrix_make_identity()
@@ -203,6 +333,64 @@ mat4x4 matrix_multiply_matrix(mat4x4 * m1, mat4x4 * m2)
     return mat;
 }
 
+mat4x4 matrix_point_at(vec3d * pos, vec3d * target, vec3d * up)
+{
+    // calculate new forward direction
+    vec3d new_forward = vector_sub(target, pos);
+    new_forward       = vector_normalize(&new_forward);
+
+    // calculate new up direction
+    fx32  dp     = vector_dot_product(up, &new_forward);
+    vec3d a      = vector_mul(&new_forward, dp);
+    vec3d new_up = vector_sub(up, &a);
+    new_up       = vector_normalize(&new_up);
+
+    // new right direction is easy, just cross product
+    vec3d new_right = vector_cross_product(&new_up, &new_forward);
+
+    // construct dimensioning and translation matrix
+    mat4x4 mat;
+    mat.m[0][0] = new_right.x;
+    mat.m[0][1] = new_right.y;
+    mat.m[0][2] = new_right.z;
+    mat.m[0][3] = FX(0.0f);
+    mat.m[1][0] = new_up.x;
+    mat.m[1][1] = new_up.y;
+    mat.m[1][2] = new_up.z;
+    mat.m[1][3] = FX(0.0f);
+    mat.m[2][0] = new_forward.x;
+    mat.m[2][1] = new_forward.y;
+    mat.m[2][2] = new_forward.z;
+    mat.m[2][3] = FX(0.0f);
+    mat.m[3][0] = pos->x;
+    mat.m[3][1] = pos->y;
+    mat.m[3][2] = pos->z;
+    mat.m[3][3] = FX(1.0f);
+    return mat;
+}
+
+mat4x4 matrix_quick_inverse(mat4x4 * m)
+{
+    mat4x4 mat;
+    mat.m[0][0] = m->m[0][0];
+    mat.m[0][1] = m->m[1][0];
+    mat.m[0][2] = m->m[2][0];
+    mat.m[0][3] = FX(0.0f);
+    mat.m[1][0] = m->m[0][1];
+    mat.m[1][1] = m->m[1][1];
+    mat.m[1][2] = m->m[2][1];
+    mat.m[1][3] = FX(0.0f);
+    mat.m[2][0] = m->m[0][2];
+    mat.m[2][1] = m->m[1][2];
+    mat.m[2][2] = m->m[2][2];
+    mat.m[2][3] = FX(0.0f);
+    mat.m[3][0] = -(MUL(m->m[3][0], mat.m[0][0]) + MUL(m->m[3][1], mat.m[1][0]) + MUL(m->m[3][2], mat.m[2][0]));
+    mat.m[3][1] = -(MUL(m->m[3][0], mat.m[0][1]) + MUL(m->m[3][1], mat.m[1][1]) + MUL(m->m[3][2], mat.m[2][1]));
+    mat.m[3][2] = -(MUL(m->m[3][0], mat.m[0][2]) + MUL(m->m[3][1], mat.m[1][2]) + MUL(m->m[3][2], mat.m[2][2]));
+    mat.m[3][3] = FX(1.0f);
+    return mat;
+}
+
 void swap_triangle(triangle_t * a, triangle_t * b)
 {
     triangle_t c = *a;
@@ -262,8 +450,10 @@ void sort_triangles(triangle_t triangles[], size_t nb_triangles)
 
 void draw_model(int       viewport_width,
                 int       viewport_height,
+                vec3d *   vec_camera,
                 model_t * model,
                 mat4x4 *  mat_proj,
+                mat4x4 *  mat_view,
                 mat4x4 *  mat_rot_z,
                 mat4x4 *  mat_rot_x,
                 bool      is_lighting_ena,
@@ -274,9 +464,6 @@ void draw_model(int       viewport_width,
     mat_world = matrix_make_identity();
     mat_world = matrix_multiply_matrix(mat_rot_z, mat_rot_x);
     mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
-
-
-    vec3d vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f)};
 
     size_t triangle_to_raster_index = 0;
 
@@ -290,7 +477,7 @@ void draw_model(int       viewport_width,
         tri.p[2] = model->mesh.vertices[face->indices[2]];
         tri.col  = face->col;
 
-        triangle_t tri_projected, tri_transformed;
+        triangle_t tri_viewed, tri_projected, tri_transformed;
 
         tri_transformed.p[0] = matrix_multiply_vector(&mat_world, &tri.p[0]);
         tri_transformed.p[1] = matrix_multiply_vector(&mat_world, &tri.p[1]);
@@ -315,7 +502,7 @@ void draw_model(int       viewport_width,
         }
 
         // get ray from triangle to camera
-        vec3d vec_camera_ray = vector_sub(&tri_transformed.p[0], &vec_camera);
+        vec3d vec_camera_ray = vector_sub(&tri_transformed.p[0], vec_camera);
 
         // if ray is aligned with normal, then triangle is visible
         if (vector_dot_product(&normal, &vec_camera_ray) < FX(0.0f))
@@ -337,10 +524,24 @@ void draw_model(int       viewport_width,
             tri_transformed.col.y = dp;
             tri_transformed.col.z = dp;
 
+            // convert world space to view space
+            tri_viewed.p[0] = matrix_multiply_vector(mat_view, &tri_transformed.p[0]);
+            tri_viewed.p[1] = matrix_multiply_vector(mat_view, &tri_transformed.p[1]);
+            tri_viewed.p[2] = matrix_multiply_vector(mat_view, &tri_transformed.p[2]);
+
+            // clip viewed triangle against near plane, this could form two additional triangles
+            /*
+            int        nb_clipped_triangles = 0;
+            triangle_t clipped[2];
+            vec3d      plane_p   = {0.0f, 0.0f, 0.1f, 1.0f};
+            vec3d      plane_n   = {0.0f, 0.0f, 1.0f, 1.0f};
+            nb_clipped_triangles = triangle_clip_against_plane(plane_p, plane_n, &tri_viewed, &clipped[0], &clipped[1]);
+            */
+
             // project triangles from 3D to 2D
-            tri_projected.p[0] = matrix_multiply_vector(mat_proj, &tri_transformed.p[0]);
-            tri_projected.p[1] = matrix_multiply_vector(mat_proj, &tri_transformed.p[1]);
-            tri_projected.p[2] = matrix_multiply_vector(mat_proj, &tri_transformed.p[2]);
+            tri_projected.p[0] = matrix_multiply_vector(mat_proj, &tri_viewed.p[0]);
+            tri_projected.p[1] = matrix_multiply_vector(mat_proj, &tri_viewed.p[1]);
+            tri_projected.p[2] = matrix_multiply_vector(mat_proj, &tri_viewed.p[2]);
             tri_projected.col  = tri_transformed.col;
 
             // scale into view

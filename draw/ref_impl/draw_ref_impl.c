@@ -129,7 +129,7 @@ int main(int argc, char * argv[])
                    &mat_rot_z,
                    &mat_rot_x,
                    true,
-                   false);
+                   true);
         // draw_model(screen_width,
         //            screen_height,
         //            &vec_camera,
@@ -155,7 +155,7 @@ int main(int argc, char * argv[])
             }
             else if (e.type == SDL_KEYDOWN)
             {
-                vec3d vec_forward = vector_mul(&vec_look_dir, MUL(FX(8.0f), FX(elapsed_time)));
+                vec3d vec_forward = vector_mul(&vec_look_dir, MUL(FX(2.0f), FX(elapsed_time)));
                 switch (e.key.keysym.scancode)
                 {
                     case SDL_SCANCODE_ESCAPE:
@@ -193,7 +193,7 @@ int main(int argc, char * argv[])
             }
         }
 
-        // theta += 0.001f;
+        theta += 0.001f;
     }
 
     SDL_DestroyWindow(window);

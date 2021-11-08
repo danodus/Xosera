@@ -74,8 +74,8 @@ typedef float fx32;
 #define FX(x)     (x)
 #define INT(x)    ((int)(x))
 #define FLT(x)    (x)
-#define MUL(x, y) (x * y)
-#define DIV(x, y) (x / y)
+#define MUL(x, y) ((x) * (y))
+#define DIV(x, y) ((x) / (y))
 
 #define SIN(x)  (sinf(x))
 #define COS(x)  (cosf(x))

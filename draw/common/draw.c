@@ -177,7 +177,7 @@ int triangle_clip_against_plane(vec3d        plane_p,
     if (nb_inside_points == 3)
     {
         // all points lie in the inside of plane, so do nothing and allow the triangle to simply pass through
-        out_tri1 = in_tri;
+        *out_tri1 = *in_tri;
 
         return 1;        // just the one returned original triangle is valid
     }
@@ -232,10 +232,10 @@ mat4x4 matrix_make_identity()
 {
     mat4x4 mat;
     memset(&mat, 0, sizeof(mat4x4));
-    mat.m[0][0] = 1.0f;
-    mat.m[1][1] = 1.0f;
-    mat.m[2][2] = 1.0f;
-    mat.m[3][3] = 1.0f;
+    mat.m[0][0] = FX(1.0f);
+    mat.m[1][1] = FX(1.0f);
+    mat.m[2][2] = FX(1.0f);
+    mat.m[3][3] = FX(1.0f);
     return mat;
 }
 
@@ -530,43 +530,45 @@ void draw_model(int       viewport_width,
             tri_viewed.p[2] = matrix_multiply_vector(mat_view, &tri_transformed.p[2]);
 
             // clip viewed triangle against near plane, this could form two additional triangles
-            /*
             int        nb_clipped_triangles = 0;
             triangle_t clipped[2];
-            vec3d      plane_p   = {0.0f, 0.0f, 0.1f, 1.0f};
-            vec3d      plane_n   = {0.0f, 0.0f, 1.0f, 1.0f};
+            const fx32 z_near    = FX(1.0f);
+            vec3d      plane_p   = {FX(0.0f), FX(0.0f), z_near, FX(1.0f)};
+            vec3d      plane_n   = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
             nb_clipped_triangles = triangle_clip_against_plane(plane_p, plane_n, &tri_viewed, &clipped[0], &clipped[1]);
-            */
 
-            // project triangles from 3D to 2D
-            tri_projected.p[0] = matrix_multiply_vector(mat_proj, &tri_viewed.p[0]);
-            tri_projected.p[1] = matrix_multiply_vector(mat_proj, &tri_viewed.p[1]);
-            tri_projected.p[2] = matrix_multiply_vector(mat_proj, &tri_viewed.p[2]);
-            tri_projected.col  = tri_transformed.col;
+            for (int n = 0; n < nb_clipped_triangles; ++n)
+            {
+                // project triangles from 3D to 2D
+                tri_projected.p[0] = matrix_multiply_vector(mat_proj, &clipped[n].p[0]);
+                tri_projected.p[1] = matrix_multiply_vector(mat_proj, &clipped[n].p[1]);
+                tri_projected.p[2] = matrix_multiply_vector(mat_proj, &clipped[n].p[2]);
+                tri_projected.col  = tri_transformed.col;
 
-            // scale into view
-            tri_projected.p[0] = vector_div(&tri_projected.p[0], tri_projected.p[0].w);
-            tri_projected.p[1] = vector_div(&tri_projected.p[1], tri_projected.p[1].w);
-            tri_projected.p[2] = vector_div(&tri_projected.p[2], tri_projected.p[2].w);
+                // scale into view
+                tri_projected.p[0] = vector_div(&tri_projected.p[0], tri_projected.p[0].w);
+                tri_projected.p[1] = vector_div(&tri_projected.p[1], tri_projected.p[1].w);
+                tri_projected.p[2] = vector_div(&tri_projected.p[2], tri_projected.p[2].w);
 
-            // offset vertices into visible normalized space
-            vec3d vec_offset_view = {FX(1.0f), FX(1.0f), FX(0.0f)};
-            tri_projected.p[0]    = vector_add(&tri_projected.p[0], &vec_offset_view);
-            tri_projected.p[1]    = vector_add(&tri_projected.p[1], &vec_offset_view);
-            tri_projected.p[2]    = vector_add(&tri_projected.p[2], &vec_offset_view);
+                // offset vertices into visible normalized space
+                vec3d vec_offset_view = {FX(1.0f), FX(1.0f), FX(0.0f)};
+                tri_projected.p[0]    = vector_add(&tri_projected.p[0], &vec_offset_view);
+                tri_projected.p[1]    = vector_add(&tri_projected.p[1], &vec_offset_view);
+                tri_projected.p[2]    = vector_add(&tri_projected.p[2], &vec_offset_view);
 
-            fx32 w               = FX(0.5f * (float)viewport_width);
-            fx32 h               = FX(0.5f * (float)viewport_height);
-            tri_projected.p[0].x = MUL(tri_projected.p[0].x, w);
-            tri_projected.p[0].y = MUL(tri_projected.p[0].y, h);
-            tri_projected.p[1].x = MUL(tri_projected.p[1].x, w);
-            tri_projected.p[1].y = MUL(tri_projected.p[1].y, h);
-            tri_projected.p[2].x = MUL(tri_projected.p[2].x, w);
-            tri_projected.p[2].y = MUL(tri_projected.p[2].y, h);
+                fx32 w               = FX(0.5f * (float)viewport_width);
+                fx32 h               = FX(0.5f * (float)viewport_height);
+                tri_projected.p[0].x = MUL(tri_projected.p[0].x, w);
+                tri_projected.p[0].y = MUL(tri_projected.p[0].y, h);
+                tri_projected.p[1].x = MUL(tri_projected.p[1].x, w);
+                tri_projected.p[1].y = MUL(tri_projected.p[1].y, h);
+                tri_projected.p[2].x = MUL(tri_projected.p[2].x, w);
+                tri_projected.p[2].y = MUL(tri_projected.p[2].y, h);
 
-            // store triangle for sorting
-            model->triangles_to_raster[triangle_to_raster_index] = tri_projected;
-            triangle_to_raster_index++;
+                // store triangle for sorting
+                model->triangles_to_raster[triangle_to_raster_index] = tri_projected;
+                triangle_to_raster_index++;
+            }
         }
     }
 

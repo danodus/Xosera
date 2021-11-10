@@ -27,8 +27,8 @@
 #include <sw_rasterizer.h>
 #include <teapot.h>
 
-static int screen_width  = 1280;
-static int screen_height = 800;
+static int screen_width  = 320;
+static int screen_height = 200;
 
 static SDL_Renderer * renderer;
 
@@ -117,9 +117,7 @@ int main(int argc, char * argv[])
         // make view matrix from camera
         mat4x4 mat_view = matrix_quick_inverse(&mat_camera);
 
-
         // Draw teapot
-
         draw_model(screen_width,
                    screen_height,
                    &vec_camera,
@@ -130,16 +128,6 @@ int main(int argc, char * argv[])
                    &mat_rot_x,
                    true,
                    true);
-        // draw_model(screen_width,
-        //            screen_height,
-        //            &vec_camera,
-        //            cube_model,
-        //            &mat_proj,
-        //            &mat_view,
-        //            &mat_rot_z,
-        //            &mat_rot_x,
-        //            true,
-        //            false);
 
         SDL_RenderPresent(renderer);
 

@@ -107,7 +107,7 @@ vec3d vector_intersect_plane(vec3d * plane_p, vec3d * plane_n, vec3d * line_star
     fx32  plane_d           = -vector_dot_product(plane_n, plane_p);
     fx32  ad                = vector_dot_product(line_start, plane_n);
     fx32  bd                = vector_dot_product(line_end, plane_n);
-    fx32  t                 = DIV(-plane_d - ad, bd - ad);
+    fx32  t                 = DIV2(-plane_d - ad, bd - ad);
     vec3d line_start_to_end = vector_sub(line_end, line_start);
     vec3d line_to_intersect = vector_mul(&line_start_to_end, t);
     return vector_add(line_start, &line_to_intersect);
@@ -216,8 +216,8 @@ int triangle_clip_against_plane(vec3d        plane_p,
         out_tri1->p[1] = *inside_points[1];
         out_tri1->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[0], outside_points[0]);
 
-        // The second triangle is composed of one the the inside points, a new point determined by the intersection of
-        // the other side of the triangle and the plane, and the newly created point above
+        // The second triangle is composed of one the the inside points, a new point determined by the intersection
+        // of the other side of the triangle and the plane, and the newly created point above
         out_tri2->p[0] = *inside_points[1];
         out_tri2->p[1] = out_tri1->p[2];
         out_tri2->p[2] = vector_intersect_plane(&plane_p, &plane_n, inside_points[1], outside_points[0]);
@@ -577,27 +577,83 @@ void draw_model(int       viewport_width,
 
     for (size_t i = 0; i < triangle_to_raster_index; ++i)
     {
-        triangle_t tri_projected = model->triangles_to_raster[triangle_to_raster_index - i - 1];
-        // rasterize triangle
-        fx32 col = MUL(tri_projected.col.x, FX(255.0f));
+        triangle_t tri_to_raster = model->triangles_to_raster[triangle_to_raster_index - i - 1];
 
-        xd_draw_filled_triangle(INT(tri_projected.p[0].x),
-                                INT(tri_projected.p[0].y),
-                                INT(tri_projected.p[1].x),
-                                INT(tri_projected.p[1].y),
-                                INT(tri_projected.p[2].x),
-                                INT(tri_projected.p[2].y),
-                                INT(col));
+        // clip triangles against all four screen edges, this could yield a bunch of triangles
+        triangle_t clipped[2];
+        triangle_t triangles[8];
+        int        nb_triangles   = 0;
+        triangles[nb_triangles++] = tri_to_raster;
 
-        if (is_wireframe)
+        int nb_new_triangles = 1;
+
+        for (int p = 0; p < 4; ++p)
         {
-            xd_draw_triangle(INT(tri_projected.p[0].x),
-                             INT(tri_projected.p[0].y),
-                             INT(tri_projected.p[1].x),
-                             INT(tri_projected.p[1].y),
-                             INT(tri_projected.p[2].x),
-                             INT(tri_projected.p[2].y),
-                             0);
+            int nb_tris_to_add = 0;
+            while (nb_new_triangles > 0)
+            {
+                // pop front
+                triangle_t test = triangles[0];
+                for (int j = 1; j < nb_triangles; ++j)
+                    triangles[j - 1] = triangles[j];
+                nb_triangles--;
+
+                nb_new_triangles--;
+
+                switch (p)
+                {
+                    case 0: {
+                        vec3d p        = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+                        vec3d n        = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
+                        nb_tris_to_add = triangle_clip_against_plane(p, n, &test, &clipped[0], &clipped[1]);
+                        break;
+                    }
+                    case 1: {
+                        vec3d p        = {FX(0.0f), FX((float)(viewport_height - 1)), FX(0.0f), FX(1.0f)};
+                        vec3d n        = {FX(0.0f), FX(-1.0f), FX(0.0f), FX(1.0f)};
+                        nb_tris_to_add = triangle_clip_against_plane(p, n, &test, &clipped[0], &clipped[1]);
+                        break;
+                    }
+                    case 2: {
+                        vec3d p        = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+                        vec3d n        = {FX(1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+                        nb_tris_to_add = triangle_clip_against_plane(p, n, &test, &clipped[0], &clipped[1]);
+                        break;
+                    }
+                    case 3: {
+                        vec3d p        = {FX((float)(viewport_width - 1)), FX(0.0f), FX(0.0f), FX(1.0f)};
+                        vec3d n        = {FX(-1.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+                        nb_tris_to_add = triangle_clip_against_plane(p, n, &test, &clipped[0], &clipped[1]);
+                        break;
+                    }
+                }
+
+                // push back
+                for (int w = 0; w < nb_tris_to_add; ++w)
+                    triangles[nb_triangles++] = clipped[w];
+            }
+            nb_new_triangles = nb_triangles;
+        }
+
+        for (size_t i = 0; i < nb_triangles; ++i)
+        {
+            triangle_t * t = &triangles[i];
+            // rasterize triangle
+            fx32 col = MUL(t->col.x, FX(255.0f));
+
+            xd_draw_filled_triangle(INT(t->p[0].x),
+                                    INT(t->p[0].y),
+                                    INT(t->p[1].x),
+                                    INT(t->p[1].y),
+                                    INT(t->p[2].x),
+                                    INT(t->p[2].y),
+                                    INT(col));
+
+            if (is_wireframe)
+            {
+                xd_draw_triangle(
+                    INT(t->p[0].x), INT(t->p[0].y), INT(t->p[1].x), INT(t->p[1].y), INT(t->p[2].x), INT(t->p[2].y), 0);
+            }
         }
     }
 }

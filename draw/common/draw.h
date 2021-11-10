@@ -42,7 +42,8 @@
 #define _MUL(x, y, scale) ((int)((x) >> (scale / 2)) * (int)((y) >> (scale / 2)))
 
 //#define _DIV(x, y, scale) (((long long)(x) << scale) / (y))
-#define _DIV(x, y, scale) (((x) << (scale / 2)) / (int)((y) >> (scale / 2)))
+#define _DIV(x, y, scale)       (((int)(x) << (scale / 2)) / (int)((y) >> (scale / 2)))
+#define _DIV2(x, y, scale, adj) (((int)(x) << (scale / 2 - (adj))) / (int)((y) >> (scale / 2 + (adj))))
 
 
 #if FIXED_POINT
@@ -60,7 +61,8 @@ fx32 xd_hw_mult(fx32 x, fx32 y);
 #else
 #define MUL(x, y) _MUL(x, y, SCALE)
 #endif
-#define DIV(x, y) _DIV(x, y, SCALE)
+#define DIV(x, y)  _DIV(x, y, SCALE)
+#define DIV2(x, y) _DIV2(x, y, SCALE, 2)
 
 #define SIN(x)  FX(sinf(_FIXED_TO_FLOAT(x, SCALE)))
 #define COS(x)  FX(cosf(_FIXED_TO_FLOAT(x, SCALE)))
@@ -71,11 +73,12 @@ fx32 xd_hw_mult(fx32 x, fx32 y);
 
 typedef float fx32;
 
-#define FX(x)     (x)
-#define INT(x)    ((int)(x))
-#define FLT(x)    (x)
-#define MUL(x, y) ((x) * (y))
-#define DIV(x, y) ((x) / (y))
+#define FX(x)      (x)
+#define INT(x)     ((int)(x))
+#define FLT(x)     (x)
+#define MUL(x, y)  ((x) * (y))
+#define DIV(x, y)  ((x) / (y))
+#define DIV2(x, y) DIV(x, y)
 
 #define SIN(x)  (sinf(x))
 #define COS(x)  (cosf(x))

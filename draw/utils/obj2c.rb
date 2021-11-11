@@ -21,7 +21,7 @@ end
 def print_vertices(array)
   print "static vec3d vertices[] = {\n"
   array.each.with_index do |item, index|
-    print "{FX(#{item[0]}f), FX(#{item[1]}f), FX(#{item[2]}f)}"
+    print "{FX(#{item[0]}f), FX(#{item[1]}f), FX(#{item[2]}f), FX(1.0f)}"
     print "," unless index == array.size - 1
     print "\n"
   end
@@ -31,7 +31,7 @@ end
 def print_faces(array)
   print "static face_t faces[] = {\n"
   array.each.with_index do |item, index|
-    print "{{#{item[0]}-1, #{item[1]}-1, #{item[2]}-1},{FX(1.0f),FX(1.0f),FX(1.0f)}}"
+    print "{{#{item[0]}-1, #{item[1]}-1, #{item[2]}-1}, {FX(1.0f), FX(1.0f), FX(1.0f), FX(1.0f)}}"
     print "," unless index == array.size - 1
     print "\n"
   end

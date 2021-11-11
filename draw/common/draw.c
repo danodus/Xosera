@@ -452,19 +452,12 @@ void draw_model(int       viewport_width,
                 int       viewport_height,
                 vec3d *   vec_camera,
                 model_t * model,
+                mat4x4 *  mat_world,
                 mat4x4 *  mat_proj,
                 mat4x4 *  mat_view,
-                mat4x4 *  mat_rot_z,
-                mat4x4 *  mat_rot_x,
                 bool      is_lighting_ena,
                 bool      is_wireframe)
 {
-    mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(3.0f));
-    mat4x4 mat_world;
-    mat_world = matrix_make_identity();
-    mat_world = matrix_multiply_matrix(mat_rot_z, mat_rot_x);
-    mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
-
     size_t triangle_to_raster_index = 0;
 
     // draw faces
@@ -479,9 +472,9 @@ void draw_model(int       viewport_width,
 
         triangle_t tri_viewed, tri_projected, tri_transformed;
 
-        tri_transformed.p[0] = matrix_multiply_vector(&mat_world, &tri.p[0]);
-        tri_transformed.p[1] = matrix_multiply_vector(&mat_world, &tri.p[1]);
-        tri_transformed.p[2] = matrix_multiply_vector(&mat_world, &tri.p[2]);
+        tri_transformed.p[0] = matrix_multiply_vector(mat_world, &tri.p[0]);
+        tri_transformed.p[1] = matrix_multiply_vector(mat_world, &tri.p[1]);
+        tri_transformed.p[2] = matrix_multiply_vector(mat_world, &tri.p[2]);
 
         // calculate the normal
         vec3d normal, line1, line2;
@@ -511,7 +504,7 @@ void draw_model(int       viewport_width,
             if (is_lighting_ena)
             {
                 // illumination
-                vec3d light_direction = {FX(0.0f), FX(0.0f), FX(-1.0f)};
+                vec3d light_direction = {FX(0.0f), FX(0.0f), FX(-1.0f), FX(1.0f)};
                 light_direction       = vector_normalize(&light_direction);
 
                 // how "aligned" are light direction and triangle surface normal?
@@ -551,7 +544,7 @@ void draw_model(int       viewport_width,
                 tri_projected.p[2] = vector_div(&tri_projected.p[2], tri_projected.p[2].w);
 
                 // offset vertices into visible normalized space
-                vec3d vec_offset_view = {FX(1.0f), FX(1.0f), FX(0.0f)};
+                vec3d vec_offset_view = {FX(1.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
                 tri_projected.p[0]    = vector_add(&tri_projected.p[0], &vec_offset_view);
                 tri_projected.p[1]    = vector_add(&tri_projected.p[1], &vec_offset_view);
                 tri_projected.p[2]    = vector_add(&tri_projected.p[2], &vec_offset_view);
@@ -635,7 +628,7 @@ void draw_model(int       viewport_width,
             nb_new_triangles = nb_triangles;
         }
 
-        for (size_t i = 0; i < nb_triangles; ++i)
+        for (int i = 0; i < nb_triangles; ++i)
         {
             triangle_t * t = &triangles[i];
             // rasterize triangle

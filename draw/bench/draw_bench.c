@@ -61,14 +61,14 @@ uint8_t  text_color = 0x02;
 const uint8_t  copper_list_len = 20;
 const uint16_t copper_list[]   = {
     0x0014, 0x0002,        // wait  0, 20                   ; Wait for line 20, H position ignored
-    0x9010, 0x0075,        // mover 0x0075, PA_GFX_CTRL     ; Set to 8-bpp + Hx2 + Vx2
+    0x9010, 0x0065,        // mover 0x0065, PA_GFX_CTRL     ; Set to 8-bpp + Hx2 + Vx2
     0x01a2, 0x0002,        // wait  0, 418                  ; Wait for line 418, H position ignored
-    0x9010, 0x00f5,        // mover 0x00F5, PA_GFX_CTRL     ; Blank
+    0x9010, 0x00d5,        // mover 0x00D5, PA_GFX_CTRL     ; Blank
     0x01b8, 0x0002,        // wait  0, 440                  ; Wait for line 440, H position ignored
     0x9010, 0x0000,        // mover 0x0000, PA_GFX_CTRL     ; Set to text mode
     0x9015, 0x0000,        // mover PA_LINE_ADDR, 0x0000
     0x01c8, 0x0002,        // wait  0, 456                  ; Wait for line 456, H position ignored
-    0x9010, 0x00f5,        // mover 0x00F5, PA_GFX_CTRL     ; Blank
+    0x9010, 0x00d5,        // mover 0x00D5, PA_GFX_CTRL     ; Blank
     0x0000, 0x0003         // nextf
 };
 
@@ -256,17 +256,33 @@ void bench(BenchType bench_type)
 
         case CUBE:
         case TEAPOT: {
-            mat4x4 mat_proj, mat_rot_z, mat_rot_x;
-            mat_proj  = matrix_make_projection(320, 199, 60.0f);
-            mat_rot_x = matrix_make_rotation_x(3.141592654f);
-            mat_rot_z = matrix_make_rotation_z(0.0f);
+            mat4x4 mat_proj = matrix_make_projection(320, 199, 60.0f);
+            //
+            // camera
+            //
+
+            vec3d  vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+            mat4x4 mat_view   = matrix_make_identity();
+
+            //
+            // world
+            //
+
+            mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(3.0f));
+            mat4x4 mat_world;
+            mat4x4 mat_rot_x = matrix_make_rotation_x(3.141592654f);
+            mat4x4 mat_rot_z = matrix_make_rotation_z(0.0f);
+            mat_world        = matrix_make_identity();
+            mat_world        = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
+            mat_world        = matrix_multiply_matrix(&mat_world, &mat_trans);
+
             if (bench_type == CUBE)
             {
-                draw_model(320, 199, cube_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
+                draw_model(320, 199, &vec_camera, cube_model, &mat_world, &mat_proj, &mat_view, true, false);
             }
             else
             {
-                draw_model(320, 199, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
+                draw_model(320, 199, &vec_camera, teapot_model, &mat_world, &mat_proj, &mat_view, true, false);
             }
         }
         break;
@@ -332,7 +348,7 @@ void xosera_demo()
     // set black background
     xreg_setw(VID_CTRL, 0x0000);
 
-    xd_init(true, g_margin_height, 200 - g_margin_height);
+    xd_init(true, g_margin_height, 320, 200 - g_margin_height, 8);
 
     // initialize swap
     xd_init_swap();

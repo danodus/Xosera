@@ -82,15 +82,11 @@ int main(int argc, char * argv[])
     // Projection matrix
     mat4x4 mat_proj = matrix_make_projection(screen_width, screen_height, 60.0f);
 
-    mat4x4 mat_rot_z, mat_rot_x;
 
     float theta = 0.0f;
 
     model_t * teapot_model = load_teapot();
     model_t * cube_model   = load_cube();
-
-    vec3d vec_up     = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
-    vec3d vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
 
     unsigned int time = SDL_GetTicks();
 
@@ -101,12 +97,12 @@ int main(int argc, char * argv[])
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
 
-        // Rotation Z
-        mat_rot_z = matrix_make_rotation_z(theta);
+        //
+        // camera
+        //
 
-        // Rotation X
-        mat_rot_x = matrix_make_rotation_x(theta);
-
+        vec3d  vec_up         = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
+        vec3d  vec_camera     = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
         vec3d  vec_target     = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
         mat4x4 mat_camera_rot = matrix_make_rotation_y(yaw);
         vec3d  vec_look_dir   = matrix_multiply_vector(&mat_camera_rot, &vec_target);
@@ -117,17 +113,22 @@ int main(int argc, char * argv[])
         // make view matrix from camera
         mat4x4 mat_view = matrix_quick_inverse(&mat_camera);
 
+        //
+        // world
+        //
+
+        mat4x4 mat_rot_z = matrix_make_rotation_z(theta);
+        mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
+
+        mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(3.0f));
+        mat4x4 mat_world;
+        mat_world = matrix_make_identity();
+        mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
+        mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
+
         // Draw teapot
-        draw_model(screen_width,
-                   screen_height,
-                   &vec_camera,
-                   teapot_model,
-                   &mat_proj,
-                   &mat_view,
-                   &mat_rot_z,
-                   &mat_rot_x,
-                   true,
-                   true);
+        draw_model(
+            screen_width, screen_height, &vec_camera, teapot_model, &mat_world, &mat_proj, &mat_view, true, true);
 
         SDL_RenderPresent(renderer);
 

@@ -94,7 +94,7 @@ const uint16_t copper_list[]   = {
     0x01b8,
     0x0002,        // wait  0, 440                  ; Wait for line 440, H position ignored
     0x9010,
-    0x00D5,        // mover 0x00E5, PA_GFX_CTRL     ; Blank
+    0x00D5,        // mover 0x00D5, PA_GFX_CTRL     ; Blank
     0x0000,
     0x0003        // nextf
 };
@@ -528,26 +528,41 @@ void demo_model(int nb_iterations, model_type_t model)
     calc_palette_mono();
     fade_in();
 
-    float  theta = 0.0f;
-    mat4x4 mat_proj, mat_rot_z, mat_rot_x;
-
-    mat_proj = matrix_make_projection(320, 200, 60.0f);
+    float  theta    = 0.0f;
+    mat4x4 mat_proj = matrix_make_projection(320, 200, 60.0f);
 
     for (int i = 0; i < nb_iterations; ++i)
     {
 
         xd_clear();
 
-        mat_rot_z = matrix_make_rotation_z(theta);
-        mat_rot_x = matrix_make_rotation_x(theta);
+        //
+        // camera
+        //
+
+        vec3d  vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+        mat4x4 mat_view   = matrix_make_identity();
+
+        //
+        // world
+        //
+
+        mat4x4 mat_rot_z = matrix_make_rotation_z(theta);
+        mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
+
+        mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(3.0f));
+        mat4x4 mat_world;
+        mat_world = matrix_make_identity();
+        mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
+        mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
         if (model == MODEL_CUBE)
         {
-            draw_model(320, 200, cube_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
+            draw_model(320, 200, &vec_camera, cube_model, &mat_world, &mat_proj, &mat_view, true, true);
         }
         else
         {
-            draw_model(320, 200, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, true, false);
+            draw_model(320, 200, &vec_camera, teapot_model, &mat_world, &mat_proj, &mat_view, true, false);
         }
 
         xd_swap(true);
@@ -611,7 +626,7 @@ void xosera_demo()
         demo_filled_rectangles(1000);
         demo_filled_triangles(500);
         demo_model(100, MODEL_CUBE);
-        demo_model(100, MODEL_TEAPOT);
+        demo_model(10, MODEL_TEAPOT);
 
         // disable Copper
         xreg_setw(COPP_CTRL, 0x0000);

@@ -202,19 +202,35 @@ static void xprintf(const char * fmt, ...)
 
 void demo_model(int nb_iterations)
 {
-    float  theta = 0.0f;
-    mat4x4 mat_proj, mat_rot_z, mat_rot_x;
+    float theta = 0.0f;
 
-    mat_proj = matrix_make_projection(width, height, 60.0f);
+    mat4x4 mat_proj = matrix_make_projection(width, height, 60.0f);
 
     for (int i = 0; i < nb_iterations; ++i)
     {
         xd_clear();
 
-        mat_rot_z = matrix_make_rotation_z(theta);
-        mat_rot_x = matrix_make_rotation_x(theta, &mat_rot_x);
+        //
+        // camera
+        //
 
-        draw_model(width, height, teapot_model, &mat_proj, &mat_rot_z, &mat_rot_x, false, true);
+        vec3d  vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
+        mat4x4 mat_view   = matrix_make_identity();
+
+        //
+        // world
+        //
+
+        mat4x4 mat_rot_z = matrix_make_rotation_z(theta);
+        mat4x4 mat_rot_x = matrix_make_rotation_x(theta);
+
+        mat4x4 mat_trans = matrix_make_translation(FX(0.0f), FX(0.0f), FX(3.0f));
+        mat4x4 mat_world;
+        mat_world = matrix_make_identity();
+        mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
+        mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
+
+        draw_model(width, height, &vec_camera, teapot_model, &mat_world, &mat_proj, &mat_view, false, true);
         delay(4000);
 
         theta += 0.1f;

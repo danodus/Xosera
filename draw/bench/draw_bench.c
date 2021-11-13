@@ -58,18 +58,15 @@ int8_t   text_h;
 int8_t   text_v;
 uint8_t  text_color = 0x02;
 
-const uint8_t  copper_list_len = 20;
-const uint16_t copper_list[]   = {
-    0x0014, 0x0002,        // wait  0, 20                   ; Wait for line 20, H position ignored
-    0x9010, 0x0065,        // mover 0x0065, PA_GFX_CTRL     ; Set to 8-bpp + Hx2 + Vx2
-    0x01a2, 0x0002,        // wait  0, 418                  ; Wait for line 418, H position ignored
-    0x9010, 0x00d5,        // mover 0x00D5, PA_GFX_CTRL     ; Blank
-    0x01b8, 0x0002,        // wait  0, 440                  ; Wait for line 440, H position ignored
-    0x9010, 0x0000,        // mover 0x0000, PA_GFX_CTRL     ; Set to text mode
-    0x9015, 0x0000,        // mover PA_LINE_ADDR, 0x0000
-    0x01c8, 0x0002,        // wait  0, 456                  ; Wait for line 456, H position ignored
-    0x9010, 0x00d5,        // mover 0x00D5, PA_GFX_CTRL     ; Blank
-    0x0000, 0x0003         // nextf
+const uint32_t copper_list[] = {
+    COP_WAIT_V(20),                        // Wait for line 20, H position ignored
+    COP_MOVER(0x0065, PA_GFX_CTRL),        // Set to 8-bpp + Hx2 + Vx2
+    COP_WAIT_V(418),                       // Wait for line 418, H position ignored
+    COP_MOVER(0x00D5, PA_GFX_CTRL),        // Blank
+    COP_WAIT_V(440),                       // Wait for line 440, H position ignored
+    COP_MOVER(0x0000, PA_GFX_CTRL),        // Set to text mode
+    COP_WAIT_V(456),                       // Wait for line 456, H position ignored
+    COP_MOVER(0x00D5, PA_GFX_CTRL)         // Blank
 };
 
 model_t * cube_model;
@@ -98,29 +95,6 @@ static void xcolor(uint8_t color)
     text_color = color;
 }
 
-/*
-static void xhome()
-{
-    get_textmode_settings();
-    xpos(0, 0);
-}
-*/
-
-/*
-static void xcls()
-{
-    // clear screen
-    xhome();
-    xm_setw(WR_ADDR, screen_addr);
-    xm_setw(WR_INCR, 1);
-    xm_setbh(DATA, text_color);
-    for (uint16_t i = 0; i < (text_columns * text_rows); i++)
-    {
-        xm_setbl(DATA, ' ');
-    }
-    xm_setw(WR_ADDR, screen_addr);
-}
-*/
 static void xcls()
 {
     xpos(0, 0);
@@ -335,10 +309,11 @@ void xosera_demo()
     install_intr();
 
     xm_setw(XR_ADDR, XR_COPPER_MEM);
-
-    for (uint8_t i = 0; i < copper_list_len; i++)
+    uint16_t * wp = (uint16_t *)copper_list;
+    for (uint8_t i = 0; i < sizeof(copper_list) / sizeof(uint32_t); i++)
     {
-        xm_setw(XR_DATA, copper_list[i]);
+        xm_setw(XR_DATA, *wp++);
+        xm_setw(XR_DATA, *wp++);
     }
 
     xreg_setw(PA_DISP_ADDR, 0x0000);
@@ -364,6 +339,7 @@ void xosera_demo()
 
     while (1)
     {
+        /*
         for (int i = 0; i < 1000; ++i)
             bench(MULT);
         for (int i = 0; i < 1000; ++i)
@@ -374,6 +350,10 @@ void xosera_demo()
             bench(CUBE);
         for (int i = 0; i < 100; ++i)
             bench(TEAPOT);
+            */
+
+        xpos(0, 0);
+        xprintf("TEXT GOES HERE");
     }
 
     // disable Copper

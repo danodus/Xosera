@@ -89,14 +89,14 @@ logic [15:0]    blit_vram_addr  /* verilator public */  = 16'b0;
 logic [15:0]    blit_vram_data  /* verilator public */  = 16'b0;
 
 // draw vram/xr access
-logic           draw_vram_sel   /* verilator public */  = 1'b0;
+logic           draw_vram_sel   /* verilator public */;
 logic           draw_vram_ack   /* verilator public */;
 logic           draw_xr_sel     /* verilator public */  = 1'b0;
 logic           draw_xr_ack     /* verilator public */  = 1'b0;
-logic           draw_wr         /* verilator public */  = 1'b0;
-logic  [3:0]    draw_wr_mask    /* verilator public */  = 4'b0;
-logic [15:0]    draw_vram_addr  /* verilator public */  = 16'b0;
-logic [15:0]    draw_vram_data  /* verilator public */  = 16'b0;
+logic           draw_wr         /* verilator public */;
+logic  [3:0]    draw_wr_mask    /* verilator public */;
+logic [15:0]    draw_vram_addr  /* verilator public */;
+logic [15:0]    draw_vram_data  /* verilator public */;
 
 // XR register bus access
 logic           xr_regs_wr_en     /* verilator public */;
@@ -108,7 +108,7 @@ logic [15:0]    xr_regs_data_in   /* verilator public */;
 logic           vgen_reg_wr_en;   // vgen XR register 0x000X & 0x001X
 /* verilator lint_off UNUSED */
 logic           blit_reg_wr_en;   // blit XR register 0x002X    // TODO
-logic           draw_reg_wr_en;   // draw XR register 0x003X    // TODO
+logic           draw_reg_wr_en;   // draw XR register 0x003X
 /* verilator lint_on UNUSED */
 
 assign vgen_reg_wr_en = xr_regs_wr_en && (xr_regs_addr[6:5] == xv::XR_CONFIG_REGS[6:5]);    // vgen reg write
@@ -157,8 +157,10 @@ assign audio_l_o = 1'b0;
 assign audio_r_o = 1'b0;
 `endif
 
+`ifdef DRAW_ENABLE
 // draw
-logic           draw_busy = 1'b0;       // is draw busy?
+logic           draw_busy;              // is draw busy?
+`endif
 
 // register interface for CPU access
 reg_interface reg_interface(
@@ -181,7 +183,11 @@ reg_interface reg_interface(
     .regs_data_i(vram_data_out),        // 16-bit word read from vram
     .xr_data_i(xm_regs_data_in),           // 16-bit word read from XR
     //
+`ifdef DRAW_ENABLE    
     .busy_i(draw_busy),                 // TODO: blit engine busy
+`else
+    .busy_i(1'b0),                      // TODO: blit engine busy
+`endif
     // reconfig
     .reconfig_o(reconfig_o),
     .boot_select_o(boot_select_o),
@@ -198,12 +204,11 @@ reg_interface reg_interface(
 `ifdef DRAW_ENABLE
 // draw
 draw draw(
-    .oe_i(draw_vram_ack),                  // output enable
+    .draw_reg_wr_i(draw_reg_wr_en),
+    .draw_reg_num_i(xr_regs_addr[3:0]),
+    .draw_reg_data_i(xr_regs_data_in),
 
-    .draw_reg_wr_i(),                      // DRAW_TODO
-    .draw_reg_num_i(),                     // DRAW_TODO
-    .draw_reg_data_i(),                    // DRAW_TODO
-
+    .draw_vram_ack_i(draw_vram_ack),       // draw VRAM acknowledge
     .draw_vram_sel_o(draw_vram_sel),       // draw VRAM select
     .draw_wr_o(draw_wr),                   // draw VRAM write
     .draw_mask_o(draw_wr_mask),            // draw vram nibble masks
@@ -285,10 +290,10 @@ vram_arb vram_arb(
     .blit_wr_mask_i(blit_wr_mask),
     .blit_addr_i(blit_vram_addr),
     .blit_data_i(blit_vram_data),
-    // TODO: polygon draw
+    // polygon draw
     .draw_sel_i(draw_vram_sel),
     .draw_ack_o(draw_vram_ack),
-    .draw_wr_i(draw_wr & regs_vram_sel),
+    .draw_wr_i(draw_wr & draw_vram_sel),
     .draw_wr_mask_i(draw_wr_mask),
     .draw_addr_i(draw_vram_addr),
     .draw_data_i(draw_vram_data),

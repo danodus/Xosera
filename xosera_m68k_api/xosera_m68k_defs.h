@@ -49,11 +49,11 @@
 // XR Extended Register / Region (accessed via XM_XR_ADDR and XM_XR_DATA)
 
 // XR Register Regions
-#define XR_CONFIG_REGS   0x0000        // 0x0000-0x000F config XR registers
-#define XR_PA_REGS       0x0010        // 0x0010-0x0017 playfield A XR registers
-#define XR_PB_REGS       0x0018        // 0x0018-0x001F playfield B XR registers
-#define XR_BLIT_REGS     0x0020        // 0x0020-0x002F 2D-blit XR registers
-#define XR_POLYDRAW_REGS 0x0030        // 0x0030-0x003F line/poly draw XR registers
+#define XR_CONFIG_REGS 0x0000        // 0x0000-0x000F config XR registers
+#define XR_PA_REGS     0x0010        // 0x0010-0x0017 playfield A XR registers
+#define XR_PB_REGS     0x0018        // 0x0018-0x001F playfield B XR registers
+#define XR_BLIT_REGS   0x0020        // 0x0020-0x002F 2D-blit XR registers
+#define XR_DRAW_REGS   0x0030        // 0x0030-0x003F line/poly draw XR registers
 
 // XR Memory Regions
 #define XR_COLOR_MEM  0x8000        // (R*/W) 0x8000-0x81FF 2 x 256 x 16-bit A & B color lookup memory ($xRGB)

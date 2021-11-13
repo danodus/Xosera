@@ -33,8 +33,8 @@
 //`define NO_CS_BUS_DELAY             // set this if your 68020+ is "cranky" with Xosera (no CS & data bus cycle delay)
 
 // features under test
-`define ENABLE_LFSR                 // enable XM_UNUSED_A as 19-bit LFSR
-`define ENABLE_PB                   // enable playfield B
+//`define ENABLE_LFSR                 // enable XM_UNUSED_A as 19-bit LFSR
+//`define ENABLE_PB                   // enable playfield B
 
 // "brief" package name (as Yosys doesn't support wildcard imports so lots of "xv::")
 package xv;
@@ -130,7 +130,7 @@ typedef enum logic [5:0] {
     XR_BLIT_WIDTH   = 6'h24,
     XR_BLIT_RD_ADDR = 6'h25,
     XR_BLIT_WR_ADDR = 6'h26,
-    XR_BLIT_COUNT   = 6'h27
+    XR_BLIT_COUNT   = 6'h27,
     // Draw XR Registers
     XR_DRAW_COORDX0     = 6'h30,
     XR_DRAW_COORDY0     = 6'h31,

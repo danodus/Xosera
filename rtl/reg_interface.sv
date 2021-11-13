@@ -145,11 +145,11 @@ always_comb begin
         xv::XM_LFSR:
             bus_data_o  = !bus_bytesel ? reg_LFSR[15:8]         : reg_LFSR[7:0];
 `else
-        xv::XM_UNUSED_A:
-            bus_data_o  = 8'b0;
+        xv::XM_MULT_MSW:
+            bus_data_o  = !bus_bytesel ? { mult_product[31:24] }: { mult_product[23:16] };
 `endif
-        xv::XM_UNUSED_B:
-            bus_data_o  = 8'b0;
+        xv::XM_MULT_LSW:
+            bus_data_o  = !bus_bytesel ? { mult_product[15:8] } : { mult_product[7:0] };
         xv::XM_RW_INCR:
             bus_data_o  = !bus_bytesel ? reg_rw_incr[15:8]      : reg_rw_incr[7:0];
         xv::XM_RW_ADDR:

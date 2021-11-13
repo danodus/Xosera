@@ -80,19 +80,11 @@ const int width = 640;
 #endif
 const int height = 300;
 
-const uint8_t  copper_list_len = 10;
-const uint16_t copper_list[]   = {
-    0x005A,
-    0x0002,        // wait  0, 90                   ; Wait for line 90, H position ignored
-    0x9010,
-    0x0050,        // mover 0x0050, PA_GFX_CTRL     ; Set to 4-bpp
-    0x0186,
-    0x0002,        // wait  0, 390                  ; Wait for line 390, H position ignored
-    0x9010,
-    0x00D0,        // mover 0x00D0, PA_GFX_CTRL     ; Blank
-    0x0000,
-    0x0003        // nextf
-};
+const uint32_t copper_list[] = {COP_WAIT_V(90),
+                                COP_MOVER(0x0050, PA_GFX_CTRL),        // 4-bpp
+                                COP_WAIT_V(390),
+                                COP_MOVER(0x00D0, PA_GFX_CTRL),        // Blank
+                                COP_END()};
 
 static void get_textmode_settings()
 {
@@ -258,10 +250,11 @@ void xosera_demo()
     xreg_setw(VID_CTRL, 0x0000);
 
     xm_setw(XR_ADDR, XR_COPPER_MEM);
-
-    for (uint8_t i = 0; i < copper_list_len; i++)
+    uint16_t * wp = (uint16_t *)copper_list;
+    for (uint8_t i = 0; i < sizeof(copper_list) / sizeof(uint32_t); i++)
     {
-        xm_setw(XR_DATA, copper_list[i]);
+        xm_setw(XR_DATA, *wp++);
+        xm_setw(XR_DATA, *wp++);
     }
 
     xd_init(true, 0, width, height, 4);

@@ -85,19 +85,11 @@ uint8_t  text_color = 0x02;        // dark green on black
 
 uint8_t disp_buffer = 0;
 
-const uint8_t  copper_list_len = 10;
-const uint16_t copper_list[]   = {
-    0x0028,
-    0x0002,        // wait  0, 40                   ; Wait for line 40, H position ignored
-    0x9010,
-    0x0065,        // mover 0x0065, PA_GFX_CTRL     ; Set to 8-bpp + Hx2 + Vx2
-    0x01b8,
-    0x0002,        // wait  0, 440                  ; Wait for line 440, H position ignored
-    0x9010,
-    0x00D5,        // mover 0x00D5, PA_GFX_CTRL     ; Blank
-    0x0000,
-    0x0003        // nextf
-};
+const uint32_t copper_list[] = {COP_WAIT_V(40),
+                                COP_MOVER(0x0065, PA_GFX_CTRL),        // Set to 8-bpp + Hx2 + Vx2
+                                COP_WAIT_V(440),
+                                COP_MOVER(0x00D5, PA_GFX_CTRL),        // Set to blank
+                                COP_END()};
 
 model_t * cube_model;
 model_t * teapot_model;
@@ -584,10 +576,11 @@ void xosera_demo()
     install_intr();
 
     xm_setw(XR_ADDR, XR_COPPER_MEM);
-
-    for (uint8_t i = 0; i < copper_list_len; i++)
+    uint16_t * wp = (uint16_t *)copper_list;
+    for (uint8_t i = 0; i < sizeof(copper_list) / sizeof(uint32_t); i++)
     {
-        xm_setw(XR_DATA, copper_list[i]);
+        xm_setw(XR_DATA, *wp++);
+        xm_setw(XR_DATA, *wp++);
     }
 
     xreg_setw(PA_DISP_ADDR, 0x0000);

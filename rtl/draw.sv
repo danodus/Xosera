@@ -13,12 +13,11 @@
 `include "xosera_pkg.sv"
 
 module draw(
-    input       logic            oe_i,                 // output enable
-
     input  wire logic            draw_reg_wr_i,        // strobe to write internal config register number
-    input  wire logic  [5:0]     draw_reg_num_i,       // internal config register number
+    input  wire logic  [3:0]     draw_reg_num_i,       // internal config register number
     input  wire logic [15:0]     draw_reg_data_i,      // data for internal config register
 
+    input  wire logic            draw_vram_ack_i,      // draw VRAM acknowledge
     output      logic            draw_vram_sel_o,      // draw VRAM select
     output      logic            draw_wr_o,            // draw VRAM write
     output      logic  [3:0]     draw_mask_o,          // draw VRAM nibble write masks
@@ -53,6 +52,8 @@ logic done_line;
 logic done_filled_triangle;
 /* verilator lint_on UNUSED */
 
+logic wait_vram_ack;
+
 logic pipeline_valid[3];
 logic signed [11:0] pipeline_x[3];
 logic signed [11:0] pipeline_y[3];
@@ -64,7 +65,7 @@ draw_line #(.CORDW(12)) draw_line (    // framebuffer coord width in bits
     .clk(clk),                         // clock
     .reset_i(reset_i),                 // reset
     .start_i(start_line),              // start line rendering
-    .oe_i(oe_i),                       // output enable
+    .oe_i(!wait_vram_ack),             // output enable
     .x0_i(x0),                         // point 0 - horizontal position
     .y0_i(y0),                         // point 0 - vertical position
     .x1_i(x1),                         // point 1 - horizontal position
@@ -80,7 +81,7 @@ draw_triangle_fill #(.CORDW(12)) draw_triangle_fill (     // framebuffer coord w
     .clk(clk),                              // clock
     .reset_i(reset_i),                      // reset
     .start_i(start_filled_triangle),        // start triangle rendering
-    .oe_i(oe_i),                            // output enable
+    .oe_i(!wait_vram_ack),                  // output enable
     .x0_i(x0),                              // point 0 - horizontal position
     .y0_i(y0),                              // point 0 - vertical position
     .x1_i(x1),                              // point 1 - horizontal position
@@ -109,15 +110,15 @@ end
 always_ff @(posedge clk) begin
 
     if (draw_reg_wr_i) begin
-        case(draw_reg_num_i[5:0])
-            xv::XR_DRAW_COORDX0[5:0]      : x0          <= draw_reg_data_i[11:0];
-            xv::XR_DRAW_COORDY0[5:0]      : y0          <= draw_reg_data_i[11:0];
-            xv::XR_DRAW_COORDX1[5:0]      : x1          <= draw_reg_data_i[11:0];
-            xv::XR_DRAW_COORDY1[5:0]      : y1          <= draw_reg_data_i[11:0];
-            xv::XR_DRAW_COORDX2[5:0]      : x2          <= draw_reg_data_i[11:0];
-            xv::XR_DRAW_COORDY2[5:0]      : y2          <= draw_reg_data_i[11:0];
-            xv::XR_DRAW_COLOR[5:0]        : color       <= draw_reg_data_i[7:0];
-            xv::XR_DRAW_EXECUTE[5:0]: begin
+        case(draw_reg_num_i)
+            xv::XR_DRAW_COORDX0[3:0]      : x0          <= draw_reg_data_i[11:0];
+            xv::XR_DRAW_COORDY0[3:0]      : y0          <= draw_reg_data_i[11:0];
+            xv::XR_DRAW_COORDX1[3:0]      : x1          <= draw_reg_data_i[11:0];
+            xv::XR_DRAW_COORDY1[3:0]      : y1          <= draw_reg_data_i[11:0];
+            xv::XR_DRAW_COORDX2[3:0]      : x2          <= draw_reg_data_i[11:0];
+            xv::XR_DRAW_COORDY2[3:0]      : y2          <= draw_reg_data_i[11:0];
+            xv::XR_DRAW_COLOR[3:0]        : color       <= draw_reg_data_i[7:0];
+            xv::XR_DRAW_EXECUTE[3:0]: begin
                 case(draw_reg_data_i[3:0])
                     xv::DRAW_LINE             : start_line             <= 1;
                     xv::DRAW_FILLED_TRIANGLE  : start_filled_triangle  <= 1;
@@ -126,17 +127,23 @@ always_ff @(posedge clk) begin
                     end
                 endcase
             end
-            xv::XR_DRAW_DEST_ADDR[5:0]    : dest_addr   <= draw_reg_data_i[15:0];
-            xv::XR_DRAW_DEST_WIDTH[5:0]   : dest_width  <= draw_reg_data_i[11:0];
-            xv::XR_DRAW_DEST_HEIGHT[5:0]  : dest_height <= draw_reg_data_i[11:0];
-            xv::XR_DRAW_GFX_CTRL[5:0]     : bpp         <= draw_reg_data_i[1:0];
+            xv::XR_DRAW_DEST_ADDR[3:0]    : dest_addr   <= draw_reg_data_i[15:0];
+            xv::XR_DRAW_DEST_WIDTH[3:0]   : dest_width  <= draw_reg_data_i[11:0];
+            xv::XR_DRAW_DEST_HEIGHT[3:0]  : dest_height <= draw_reg_data_i[11:0];
+            xv::XR_DRAW_GFX_CTRL[3:0]     : bpp         <= draw_reg_data_i[1:0];
             default: begin
                 // Do nothing
             end
         endcase
     end
 
-    if (oe_i) begin
+    if (draw_vram_ack_i) begin
+        wait_vram_ack <= 0;
+        draw_vram_sel_o <= 0;
+        draw_wr_o <= 0;        
+    end
+
+    if (!wait_vram_ack) begin
         if (drawing) begin
             pipeline_x[0] <= x;
             pipeline_y[0] <= y;
@@ -165,8 +172,6 @@ always_ff @(posedge clk) begin
         end
 
         if (pipeline_valid[2]) begin
-            draw_vram_sel_o <= 1;
-            draw_wr_o <= 1;
             if (bpp == xv::BPP_4) begin
                 draw_mask_o <= 4'b1000 >> pipeline_x[2][1:0];
                 draw_addr_o <= dest_addr + {4'b0, pipeline_y[2]} * ({4'b0, dest_width} / 4) + {4'b0, pipeline_x[2]} / 4;
@@ -177,15 +182,13 @@ always_ff @(posedge clk) begin
                 draw_addr_o <= dest_addr + {4'b0, pipeline_y[2]} * ({4'b0, dest_width} / 2) + {4'b0, pipeline_x[2]} / 2;
                 draw_data_out_o <= {pipeline_color[2], pipeline_color[2]};
             end
+            draw_vram_sel_o <= 1;
+            draw_wr_o <= 1;
+            wait_vram_ack <= 1;
         end else begin
             draw_vram_sel_o <= 0;
             draw_wr_o <= 0;
         end
-    end
-
-    if (!busy_o) begin
-        draw_vram_sel_o <= 0;
-        draw_wr_o <= 0;
     end
 
     if (start_line) start_line <= 0;
@@ -194,6 +197,7 @@ always_ff @(posedge clk) begin
     if (reset_i) begin
         start_line <= 0;
         start_filled_triangle <= 0;
+        wait_vram_ack <= 0;
         draw_vram_sel_o <= 0;
         draw_wr_o <= 0;
         dest_addr <= 16'h0000;

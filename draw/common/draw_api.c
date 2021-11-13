@@ -130,6 +130,32 @@ void xd_swap(bool is_vsync_enabled)
     xreg_setw(DRAW_DEST_ADDR, g_cur_draw_buffer_addr);
 }
 
+uint16_t xd_swap_copper(bool is_vsync_enabled)
+{
+    xd_wait_done();
+    if (is_vsync_enabled)
+        xd_wait_frame();
+
+    uint16_t addr;
+
+    if (g_disp_buffer)
+    {
+        g_disp_buffer          = 0;
+        addr                   = g_first_disp_buffer_addr;
+        g_cur_draw_buffer_addr = g_second_disp_buffer_addr;
+    }
+    else
+    {
+        g_disp_buffer          = 1;
+        addr                   = g_second_disp_buffer_addr;
+        g_cur_draw_buffer_addr = g_first_disp_buffer_addr;
+    }
+    xreg_setw(DRAW_DEST_ADDR, g_cur_draw_buffer_addr);
+
+    return addr;
+}
+
+
 void xd_clear()
 {
     // temp hack, always accelerated

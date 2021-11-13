@@ -53,36 +53,27 @@ uint16_t g_margin_height = 1;
 
 uint16_t screen_addr  = 0x0000;
 uint8_t  text_columns = 80;
-uint8_t  text_rows    = 2;
+uint8_t  text_rows    = 1;
 int8_t   text_h;
 int8_t   text_v;
 uint8_t  text_color = 0x02;
 
-const uint32_t copper_list[] = {
-    COP_WAIT_V(20),                        // Wait for line 20, H position ignored
-    COP_MOVER(0x0065, PA_GFX_CTRL),        // Set to 8-bpp + Hx2 + Vx2
-    COP_WAIT_V(418),                       // Wait for line 418, H position ignored
-    COP_MOVER(0x00D5, PA_GFX_CTRL),        // Blank
-    COP_WAIT_V(440),                       // Wait for line 440, H position ignored
-    COP_MOVER(0x0000, PA_GFX_CTRL),        // Set to text mode
-    COP_WAIT_V(456),                       // Wait for line 456, H position ignored
-    COP_MOVER(0x00D5, PA_GFX_CTRL)         // Blank
-};
+const uint32_t copper_list[] = {COP_WAIT_V(20),                        // Wait for line 20, H position ignored
+                                COP_MOVER(0x0065, PA_GFX_CTRL),        // Set to 8-bpp + Hx2 + Vx2
+                                COP_MOVER(160, PA_LINE_LEN),
+                                COP_MOVER(0x0000, PA_LINE_ADDR),        // Current bitmap display address
+                                COP_WAIT_V(418),                        // Wait for line 418, H position ignored
+                                COP_MOVER(0x00D5, PA_GFX_CTRL),         // Blank
+                                COP_WAIT_V(440),                        // Wait for line 440, H position ignored
+                                COP_MOVER(0x0000, PA_GFX_CTRL),         // Set to text mode
+                                COP_MOVER(80, PA_LINE_LEN),
+                                COP_MOVER(0x0000, PA_LINE_ADDR),
+                                COP_WAIT_V(456),                       // Wait for line 456, H position ignored
+                                COP_MOVER(0x00D5, PA_GFX_CTRL),        // Blank
+                                COP_END()};
 
 model_t * cube_model;
 model_t * teapot_model;
-
-/*
-static void get_textmode_settings()
-{
-    uint16_t vx          = (xreg_getw(PA_GFX_CTRL) & 3) + 1;
-    uint16_t tile_height = (xreg_getw(PA_TILE_CTRL) & 0xf) + 1;
-    screen_addr          = xreg_getw(PA_DISP_ADDR);
-    text_columns         = (uint8_t)xreg_getw(PA_LINE_LEN);
-    text_rows            = (uint8_t)(((xreg_getw(VID_VSIZE) / vx) + (tile_height - 1)) / tile_height);
-}
-*/
-
 
 static void xpos(uint8_t h, uint8_t v)
 {
@@ -95,21 +86,24 @@ static void xcolor(uint8_t color)
     text_color = color;
 }
 
-static void xcls()
+static void xhome()
 {
     xpos(0, 0);
+}
 
-
+static void xcls()
+{
+    // clear screen
+    xhome();
     xm_setw(WR_ADDR, screen_addr);
     xm_setw(WR_INCR, 1);
     xm_setbh(DATA, text_color);
-    for (uint16_t i = 0; i < g_margin_height * 320 / 2; i++)
+    for (uint16_t i = 0; i < (text_columns * text_rows); i++)
     {
         xm_setbl(DATA, ' ');
     }
     xm_setw(WR_ADDR, screen_addr);
 }
-
 
 static void xprint(const char * str)
 {
@@ -158,6 +152,9 @@ static void xprint(const char * str)
                 }
                 xm_setw(WR_ADDR, screen_addr + (text_v * text_columns) + text_h);
                 break;
+            case '\f':
+                xcls();
+                break;
             default:
                 break;
         }
@@ -185,6 +182,17 @@ int rand2(void)
 void srand2(unsigned int seed)
 {
     next = seed;
+}
+
+void swap_copper()
+{
+    uint16_t addr = xd_swap_copper(false);
+    xm_setw(XR_ADDR, XR_COPPER_MEM + 6);
+
+    uint32_t   i  = COP_MOVER(addr, PA_LINE_ADDR);
+    uint16_t * wp = (uint16_t *)&i;
+    xm_setw(XR_DATA, *wp++);
+    xm_setw(XR_DATA, *wp++);
 }
 
 typedef enum
@@ -266,7 +274,8 @@ void bench(BenchType bench_type)
             break;
     }
 
-    xd_swap(false);
+    swap_copper();
+
     uint16_t t2 = xm_getw(TIMER);
 
     uint16_t dt;
@@ -316,9 +325,9 @@ void xosera_demo()
         xm_setw(XR_DATA, *wp++);
     }
 
-    xreg_setw(PA_DISP_ADDR, 0x0000);
     xreg_setw(PA_LINE_ADDR, 0x0000);
-    xreg_setw(PA_LINE_LEN, 160);
+    xreg_setw(PA_GFX_CTRL, 0x0000);
+    xreg_setw(PA_LINE_LEN, 80);
 
     // set black background
     xreg_setw(VID_CTRL, 0x0000);
@@ -327,6 +336,8 @@ void xosera_demo()
 
     // initialize swap
     xd_init_swap();
+
+    swap_copper();
 
     // enable Copper
     xreg_setw(COPP_CTRL, 0x8000);
@@ -339,7 +350,6 @@ void xosera_demo()
 
     while (1)
     {
-        /*
         for (int i = 0; i < 1000; ++i)
             bench(MULT);
         for (int i = 0; i < 1000; ++i)
@@ -348,12 +358,8 @@ void xosera_demo()
             bench(TRIANGLES);
         for (int i = 0; i < 100; ++i)
             bench(CUBE);
-        for (int i = 0; i < 100; ++i)
+        for (int i = 0; i < 10; ++i)
             bench(TEAPOT);
-            */
-
-        xpos(0, 0);
-        xprintf("TEXT GOES HERE");
     }
 
     // disable Copper

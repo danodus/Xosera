@@ -24,12 +24,14 @@
 #define DRAW_API_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
-void xd_init(bool hw_rasterizer, int start_line, int width, int height, int bpp);
-void xd_init_swap();
-void xd_swap(bool is_vsync_enabled);
-void xd_clear();
-void xd_finish();
+void     xd_init(bool hw_rasterizer, int start_line, int width, int height, int bpp);
+void     xd_init_swap();
+void     xd_swap(bool is_vsync_enabled);
+uint16_t xd_swap_copper(bool is_vsync_enabled);
+void     xd_clear();
+void     xd_finish();
 
 void xd_draw_line(int x0, int y0, int x1, int y1, int color);
 void xd_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color);

@@ -313,7 +313,7 @@ void xosera_demo()
     cube_model   = load_cube();
     teapot_model = load_teapot();
 
-    xosera_init(0);
+    xosera_init(2);
 
     install_intr();
 

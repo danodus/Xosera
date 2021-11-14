@@ -40,7 +40,7 @@
 #include <xosera_m68k_api.h>
 
 // Note: Not enough memory for full 848x480
-#define MODE_848_480 1
+#define MODE_848_480 0
 
 extern void install_intr(void);
 extern void remove_intr(void);
@@ -235,9 +235,9 @@ void xosera_demo()
     teapot_model = load_teapot();
 
 #if MODE_848_480
-    xosera_init(1);
+    xosera_init(3);
 #else
-    xosera_init(0);
+    xosera_init(2);
 #endif
 
     install_intr();

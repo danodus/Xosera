@@ -91,10 +91,12 @@ logic [15:0]            reg_LFSR        /* verilator public */;
 `endif
 
 // multiplication
-logic  [7:0]    reg_mult_msw_even;
-logic  [7:0]    reg_mult_msw_odd;
-logic  [7:0]    reg_mult_lsw_even;
+/* verilator lint_off UNUSED */
+logic  [7:0]    reg_mult_msw_even = 0;
+logic  [7:0]    reg_mult_msw_odd = 0;
+logic  [7:0]    reg_mult_lsw_even = 0;
 logic  [31:0]   mult_product;           // 16.16 fixed point multiplication product
+/* verilator lint_on UNUSED */
 
 // output interrupt mask
 assign intr_mask_o = intr_mask;

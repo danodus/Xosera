@@ -33,8 +33,14 @@
 //`define NO_CS_BUS_DELAY             // set this if your 68020+ is "cranky" with Xosera (no CS & data bus cycle delay)
 
 // features under test
-//`define ENABLE_LFSR                 // enable XM_UNUSED_A as 19-bit LFSR
-//`define ENABLE_PB                   // enable playfield B
+`ifdef VARIANT_DRAW
+// draw feature set
+`define ENABLE_DRAW                 // enable draw module
+`else
+// main feature set
+`define ENABLE_LFSR                 // enable XM_UNUSED_A as 19-bit LFSR
+`define ENABLE_PB                   // enable playfield B
+`endif
 
 // "brief" package name (as Yosys doesn't support wildcard imports so lots of "xv::")
 package xv;
@@ -200,9 +206,6 @@ localparam V_BACK_PORCH      = 35;          // V post-sync (back porch) lines
 localparam H_SYNC_POLARITY   = 1'b0;        // H sync pulse active level
 localparam V_SYNC_POLARITY   = 1'b1;        // V sync pulse active level
 
-// Primitive renderer module is available at this pixel clock
-`define DRAW_ENABLE
-
 `elsif    MODE_640x400_85
 // VGA mode 640x400 @ 85Hz (pixel clock 31.500Mhz)
 localparam PIXEL_FREQ        = 31_500_000;  // pixel clock in Hz
@@ -232,9 +235,6 @@ localparam V_SYNC_PULSE      = 2;           // V sync pulse lines
 localparam V_BACK_PORCH      = 33;          // V post-sync (back porch) lines
 localparam H_SYNC_POLARITY   = 1'b0;        // H sync pulse active level
 localparam V_SYNC_POLARITY   = 1'b0;        // V sync pulse active level
-
-// Primitive renderer module is available at this pixel clock
-`define DRAW_ENABLE
 
 `elsif    MODE_640x480_75
 // VGA mode 640x480 @ 75Hz (pixel clock 31.500Mhz)
@@ -295,9 +295,6 @@ localparam V_SYNC_PULSE      = 8;           // V sync pulse lines
 localparam V_BACK_PORCH      = 23;          // V post-sync (back porch) lines
 localparam H_SYNC_POLARITY   = 1'b1;        // H sync pulse active level
 localparam V_SYNC_POLARITY   = 1'b1;        // V sync pulse active level
-
-// Primitive renderer module is available at this pixel clock
-`define DRAW_ENABLE
 
 `elsif    MODE_800x600
 // VGA mode 800x600 @ 60Hz (pixel clock 40.000Mhz)

@@ -96,6 +96,9 @@ YOSYS_SYNTH_ARGS := -device u -dsp -abc2 -relut -retime -top $(TOP)
 
 # Verilog preprocessor definitions common to all modules
 DEFINES := -DNO_ICE40_DEFAULT_ASSIGNMENTS -DGITCLEAN=$(XOSERA_CLEAN) -DGITHASH=$(XOSERA_HASH) -D$(VIDEO_MODE) -D$(VIDEO_OUTPUT) -DICE40UP5K -DUPDUINO
+ifdef VARIANT
+DEFINES := $(DEFINES) -D$(VARIANT)
+endif
 
 # Verilator tool (used for "lint")
 VERILATOR := verilator
@@ -106,10 +109,15 @@ TECH_LIB := $(shell $(YOSYS_CONFIG) --datdir/ice40/cells_sim.v)
 NEXTPNR := nextpnr-ice40
 NEXTPNR_ARGS :=  --seed $${RANDOM} --promote-logic --opt-timing --placer heap
 
+ifdef VARIANT
+VARIANT_PREFIX_UC := $(subst VARIANT_,,$(VARIANT))_
+VARIANT_PREFIX := $(shell echo $(VARIANT_PREFIX_UC) | tr A-Z a-z)
+endif
+
 ifeq ($(strip $(VIDEO_OUTPUT)), PMOD_1B2_DVI12)
-OUTSUFFIX := dvi_$(subst MODE_,,$(VIDEO_MODE))
+OUTSUFFIX := dvi_$(VARIANT_PREFIX)$(subst MODE_,,$(VIDEO_MODE))
 else
-OUTSUFFIX := vga_$(subst MODE_,,$(VIDEO_MODE))
+OUTSUFFIX := vga_$(VARIANT_PREFIX)$(subst MODE_,,$(VIDEO_MODE))
 endif
 
 OUTNAME := $(TOP)_$(OUTSUFFIX)

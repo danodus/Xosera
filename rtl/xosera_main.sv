@@ -157,7 +157,7 @@ assign audio_l_o = 1'b0;
 assign audio_r_o = 1'b0;
 `endif
 
-`ifdef DRAW_ENABLE
+`ifdef ENABLE_DRAW
 // draw
 logic           draw_busy;              // is draw busy?
 `endif
@@ -183,7 +183,7 @@ reg_interface reg_interface(
     .regs_data_i(vram_data_out),        // 16-bit word read from vram
     .xr_data_i(xm_regs_data_in),           // 16-bit word read from XR
     //
-`ifdef DRAW_ENABLE    
+`ifdef ENABLE_DRAW    
     .busy_i(draw_busy),                 // TODO: blit engine busy
 `else
     .busy_i(1'b0),                      // TODO: blit engine busy
@@ -201,7 +201,7 @@ reg_interface reg_interface(
     .clk(clk)
 );
 
-`ifdef DRAW_ENABLE
+`ifdef ENABLE_DRAW
 // draw
 draw draw(
     .draw_reg_wr_i(draw_reg_wr_en),

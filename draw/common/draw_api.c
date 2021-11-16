@@ -74,8 +74,7 @@ static void draw_pixel(int x, int y, int color)
     {
         uint16_t addr = g_cur_draw_buffer_addr + (uy * (g_width / 2)) + (ux / 2);
         xm_setw(WR_ADDR, addr);
-        xm_setw(SYS_CTRL, (ux & 1) ? 0x0308 : 0x0C08);
-
+        xm_setbl(SYS_CTRL, (ux & 1) ? 0x03 : 0x0C);
         xm_setbh(DATA, uc);
         xm_setbl(DATA, uc);
     }

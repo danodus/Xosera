@@ -187,12 +187,8 @@ void srand2(unsigned int seed)
 void swap_copper()
 {
     uint16_t addr = xd_swap_copper(false);
-    xm_setw(XR_ADDR, XR_COPPER_MEM + 6);
-
-    uint32_t   i  = COP_MOVER(addr, PA_LINE_ADDR);
-    uint16_t * wp = (uint16_t *)&i;
-    xm_setw(XR_DATA, *wp++);
-    xm_setw(XR_DATA, *wp++);
+    xm_setw(XR_ADDR, XR_COPPER_MEM + 7);
+    xm_setw(XR_DATA, addr);
 }
 
 typedef enum
@@ -279,7 +275,7 @@ void bench(BenchType bench_type)
     uint16_t t2 = xm_getw(TIMER);
 
     uint16_t dt;
-    if (t2 > t1)
+    if (t2 >= t1)
     {
         dt = t2 - t1;
     }

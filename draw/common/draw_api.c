@@ -88,10 +88,13 @@ void xd_init(bool hw_rasterizer, int start_line, int width, int height, int bpp)
     g_width         = width;
     g_height        = height;
     g_bpp           = bpp;
-    xd_wait_done();
-    xreg_setw(DRAW_DEST_WIDTH, width);
-    xreg_setw(DRAW_DEST_HEIGHT, height);
-    xreg_setw(DRAW_GFX_CTRL, bpp == 4 ? 0x0001 : 0x0002);
+    if (g_hw_rasterizer)
+    {
+        xd_wait_done();
+        xreg_setw(DRAW_DEST_WIDTH, width);
+        xreg_setw(DRAW_DEST_HEIGHT, height);
+        xreg_setw(DRAW_GFX_CTRL, bpp == 4 ? 0x0001 : 0x0002);
+    }
 }
 
 void xd_init_swap()
@@ -105,7 +108,8 @@ void xd_init_swap()
     // xreg_setw(PA_LINE_ADDR, 0x0000);
     xd_wait_done();
     g_cur_draw_buffer_addr = g_second_disp_buffer_addr;
-    xreg_setw(DRAW_DEST_ADDR, g_cur_draw_buffer_addr);
+    if (g_hw_rasterizer)
+        xreg_setw(DRAW_DEST_ADDR, g_cur_draw_buffer_addr);
 }
 
 void xd_swap(bool is_vsync_enabled)
@@ -126,7 +130,8 @@ void xd_swap(bool is_vsync_enabled)
         xreg_setw(PA_DISP_ADDR, g_second_disp_buffer_addr);
         g_cur_draw_buffer_addr = g_first_disp_buffer_addr;
     }
-    xreg_setw(DRAW_DEST_ADDR, g_cur_draw_buffer_addr);
+    if (g_hw_rasterizer)
+        xreg_setw(DRAW_DEST_ADDR, g_cur_draw_buffer_addr);
 }
 
 uint16_t xd_swap_copper(bool is_vsync_enabled)
@@ -149,7 +154,8 @@ uint16_t xd_swap_copper(bool is_vsync_enabled)
         addr                   = g_second_disp_buffer_addr;
         g_cur_draw_buffer_addr = g_first_disp_buffer_addr;
     }
-    xreg_setw(DRAW_DEST_ADDR, g_cur_draw_buffer_addr);
+    if (g_hw_rasterizer)
+        xreg_setw(DRAW_DEST_ADDR, g_cur_draw_buffer_addr);
 
     return addr;
 }
@@ -157,13 +163,15 @@ uint16_t xd_swap_copper(bool is_vsync_enabled)
 
 void xd_clear()
 {
-    // temp hack, always accelerated
-    hw_draw_filled_rectangle(0, 0, g_width - 1, g_height - 1, 1);
+    // TODO: Clear with blitter
+    if (g_hw_rasterizer)
+        hw_draw_filled_rectangle(0, 0, g_width - 1, g_height - 1, 1);
 }
 
 void xd_finish()
 {
-    xd_wait_done();
+    if (g_hw_rasterizer)
+        xd_wait_done();
 }
 
 void xd_draw_line(int x0, int y0, int x1, int y1, int color)
@@ -175,7 +183,7 @@ void xd_draw_line(int x0, int y0, int x1, int y1, int color)
     else
     {
         sw_draw_line(x0, y0, x1, y1, color);
-        xm_setw(SYS_CTRL, 0x0F08);
+        xm_setbl(SYS_CTRL, 0x0F);
     }
 }
 
@@ -188,7 +196,7 @@ void xd_draw_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color)
     else
     {
         sw_draw_triangle(x0, y0, x1, y1, x2, y2, color);
-        xm_setw(SYS_CTRL, 0x0F08);
+        xm_setbl(SYS_CTRL, 0x0F);
     }
 }
 
@@ -201,7 +209,7 @@ void xd_draw_filled_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int
     else
     {
         sw_draw_filled_triangle(x0, y0, x1, y1, x2, y2, color);
-        xm_setw(SYS_CTRL, 0x0F08);
+        xm_setbl(SYS_CTRL, 0x0F);
     }
 }
 
@@ -214,6 +222,6 @@ void xd_draw_filled_rectangle(int x0, int y0, int x1, int y1, int color)
     else
     {
         sw_draw_filled_rectangle(x0, y0, x1, y1, color);
-        xm_setw(SYS_CTRL, 0x0F08);
+        xm_setbl(SYS_CTRL, 0x0F);
     }
 }

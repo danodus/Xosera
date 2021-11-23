@@ -92,6 +92,8 @@ int main(int argc, char * argv[])
 
     float yaw = 0.0f;
 
+    vec3d vec_up     = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
+    vec3d vec_camera = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
     while (!quit)
     {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
@@ -101,8 +103,6 @@ int main(int argc, char * argv[])
         // camera
         //
 
-        vec3d  vec_up         = {FX(0.0f), FX(1.0f), FX(0.0f), FX(1.0f)};
-        vec3d  vec_camera     = {FX(0.0f), FX(0.0f), FX(0.0f), FX(1.0f)};
         vec3d  vec_target     = {FX(0.0f), FX(0.0f), FX(1.0f), FX(1.0f)};
         mat4x4 mat_camera_rot = matrix_make_rotation_y(yaw);
         vec3d  vec_look_dir   = matrix_multiply_vector(&mat_camera_rot, &vec_target);

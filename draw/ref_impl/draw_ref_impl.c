@@ -29,6 +29,7 @@
 
 static int screen_width  = 320;
 static int screen_height = 200;
+static int screen_scale  = 4;
 
 static SDL_Renderer * renderer;
 
@@ -59,6 +60,23 @@ void xd_draw_filled_rectangle(int x0, int y0, int x1, int y1, int color)
     sw_draw_filled_rectangle(x0, y0, x1, y1, color);
 }
 
+void xd_draw_textured_triangle(int         x0,
+                               int         y0,
+                               fx32        u0,
+                               fx32        v0,
+                               int         x1,
+                               int         y1,
+                               fx32        u1,
+                               fx32        v1,
+                               int         x2,
+                               int         y2,
+                               fx32        u2,
+                               fx32        v2,
+                               texture_t * tex)
+{
+    sw_draw_textured_triangle(x0, y0, u0, v0, x1, y1, u1, v1, x2, y2, u2, v2, tex);
+}
+
 int main(int argc, char * argv[])
 {
     sw_init_rasterizer(draw_pixel);
@@ -68,13 +86,14 @@ int main(int argc, char * argv[])
     SDL_Window * window = SDL_CreateWindow("Xosera Draw Reference Implementation",
                                            SDL_WINDOWPOS_CENTERED_DISPLAY(1),
                                            SDL_WINDOWPOS_UNDEFINED,
-                                           screen_width,
-                                           screen_height,
+                                           screen_width * screen_scale,
+                                           screen_height * screen_scale,
                                            0);
 
     // SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+    SDL_RenderSetScale(renderer, (float)screen_scale, (float)screen_scale);
 
     SDL_Event e;
     int       quit = 0;
@@ -126,9 +145,9 @@ int main(int argc, char * argv[])
         mat_world = matrix_multiply_matrix(&mat_rot_z, &mat_rot_x);
         mat_world = matrix_multiply_matrix(&mat_world, &mat_trans);
 
-        // Draw teapot
+        // Draw cube
         draw_model(
-            screen_width, screen_height, &vec_camera, teapot_model, &mat_world, &mat_proj, &mat_view, true, true);
+            screen_width, screen_height, &vec_camera, cube_model, &mat_world, &mat_proj, &mat_view, true, true, NULL);
 
         SDL_RenderPresent(renderer);
 
@@ -182,7 +201,7 @@ int main(int argc, char * argv[])
             }
         }
 
-        theta += 0.001f;
+        // theta += 0.001f;
     }
 
     SDL_DestroyWindow(window);

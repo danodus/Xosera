@@ -218,3 +218,25 @@ void xd_draw_filled_rectangle(int x0, int y0, int x1, int y1, int color)
         xm_setw(SYS_CTRL, 0x0F08);
     }
 }
+
+void xd_draw_textured_triangle(int         x0,
+                               int         y0,
+                               fx32        u0,
+                               fx32        v0,
+                               int         x1,
+                               int         y1,
+                               fx32        u1,
+                               fx32        v1,
+                               int         x2,
+                               int         y2,
+                               fx32        u2,
+                               fx32        v2,
+                               texture_t * tex)
+{
+    // Currently only available with the software rasterizer
+    if (!g_hw_rasterizer)
+    {
+        sw_draw_textured_triangle(x0, y0, u0, v0, x1, y1, u1, v1, x2, y2, u2, v2, tex);
+        xm_setw(SYS_CTRL, 0x0F08);
+    }
+}

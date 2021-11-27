@@ -409,6 +409,13 @@ static void swapi(int * a, int * b)
     *b    = c;
 }
 
+static void swapfx32(fx32 * a, fx32 * b)
+{
+    fx32 c = *a;
+    *a     = *b;
+    *b     = c;
+}
+
 void sw_draw_line(int x0, int y0, int x1, int y1, int color)
 {
     if (y0 > y1)
@@ -483,5 +490,181 @@ void sw_draw_filled_rectangle(int x0, int y0, int x1, int y1, int color)
     sw_draw_filled_triangle(x0, y0, x1, y0, x0, y1, color);
     sw_draw_filled_triangle(x1, y0, x0, y1, x1, y1, color);
 }
+
+int texture_sample_color(texture_t * tex, fx32 u, fx32 v)
+{
+    if (tex == NULL)
+    {
+        if (u < FX(0.5) && v < FX(0.5))
+            return 255;
+        if (u >= FX(0.5) && v < FX(0.5))
+            return 128;
+        if (u < FX(0.5) && v >= FX(0.5))
+            return 128;
+        return 255;
+    }
+    return 0;
+}
+
+void sw_draw_textured_triangle(int         x0,
+                               int         y0,
+                               fx32        u0,
+                               fx32        v0,
+                               int         x1,
+                               int         y1,
+                               fx32        u1,
+                               fx32        v1,
+                               int         x2,
+                               int         y2,
+                               fx32        u2,
+                               fx32        v2,
+                               texture_t * tex)
+{
+    if (y0 > y2)
+    {
+        swapi(&x0, &x2);
+        swapi(&y0, &y2);
+        swapfx32(&u0, &u2);
+        swapfx32(&v0, &v2);
+    }
+
+    if (y0 > y1)
+    {
+        swapi(&x0, &x1);
+        swapi(&y0, &y1);
+        swapfx32(&u0, &u1);
+        swapfx32(&v0, &v1);
+    }
+
+    if (y1 > y2)
+    {
+        swapi(&x1, &x2);
+        swapi(&y1, &y2);
+        swapfx32(&u1, &u2);
+        swapfx32(&v1, &v2);
+    }
+
+    int  dx0 = x1 - x0;
+    int  dy0 = y1 - y0;
+    fx32 du0 = u1 - u0;
+    fx32 dv0 = v1 - v0;
+
+    int  dx1 = x2 - x0;
+    int  dy1 = y2 - y0;
+    fx32 du1 = u2 - u0;
+    fx32 dv1 = v2 - v0;
+
+    fx32 tex_u, tex_v;
+
+    fx32 dax_step = 0, dbx_step = 0, du0_step = 0, dv0_step = 0, du1_step = 0, dv1_step = 0;
+
+    if (dy0)
+        dax_step = DIV(FXI(dx0), FXI(dy0 < 0 ? -dy0 : dy0));
+    if (dy1)
+        dbx_step = DIV(FXI(dx1), FXI(dy1 < 0 ? -dy1 : dy1));
+
+    if (dy0)
+        du0_step = DIV(du0, FXI(dy0 < 0 ? -dy0 : dy0));
+    if (dy0)
+        dv0_step = DIV(dv0, FXI(dy0 < 0 ? -dy0 : dy0));
+
+    if (dy1)
+        du1_step = DIV(du1, FXI(dy1 < 0 ? -dy1 : dy1));
+    if (dy1)
+        dv1_step = DIV(dv1, FXI(dy1 < 0 ? -dy1 : dy1));
+
+    if (dy0)
+    {
+        for (int i = y0; i <= y1; i++)
+        {
+            int ax = x0 + MUL(FXI(i - y0), dax_step);
+            int bx = x0 + MUL(FXI(i - y0), dbx_step);
+
+            fx32 tex_su = u0 + MUL(FXI(i - y0), du0_step);
+            fx32 tex_sv = v0 + MUL(FXI(i - y0), dv0_step);
+
+            fx32 tex_eu = u0 + MUL(FXI(i - y0), du1_step);
+            fx32 tex_ev = v0 + MUL(FXI(i - y0), dv1_step);
+
+            if (ax > bx)
+            {
+                swapi(&ax, &bx);
+                swapfx32(&tex_su, &tex_eu);
+                swapfx32(&tex_sv, &tex_ev);
+            }
+
+            tex_u = tex_su;
+            tex_v = tex_sv;
+
+            fx32 tstep = DIV(FX(1.0f), FXI(bx - ax));
+            fx32 t     = FX(0.0f);
+
+            for (int j = ax; j < bx; j++)
+            {
+                tex_u = MUL(FX(1.0) - t, tex_su) + MUL(t, tex_eu);
+                tex_v = MUL(FX(1.0) - t, tex_sv) + MUL(t, tex_ev);
+
+                (*g_draw_pixel_fn)(j, i, texture_sample_color(tex, tex_u, tex_v));
+                t += tstep;
+            }
+        }
+    }
+
+    // Bottom
+
+    dx0 = x2 - x1;
+    dy0 = y2 - y1;
+    du0 = u2 - u1;
+    dv0 = v2 - v1;
+    if (dy0)
+        dax_step = DIV(dx0, FXI(dy0 < 0 ? -dy0 : dy0));
+    if (dy1)
+        dbx_step = DIV(dx1, FXI(dy1 < 0 ? -dy1 : dy1));
+
+    du0_step = 0;
+    dv0_step = 0;
+    if (dy0)
+        du0_step = DIV(du0, FXI(dy0 < 0 ? -dy0 : dy0));
+    if (dy0)
+        dv0_step = DIV(dv0, FXI(dy0 < 0 ? -dy0 : dy0));
+
+    if (dy0)
+    {
+        for (int i = y1; i <= y2; i++)
+        {
+            int ax = x1 + MUL(FXI(i - y1), dax_step);
+            int bx = x0 + MUL(FXI(i - y0), dbx_step);
+
+            fx32 tex_su = u1 + MUL(FXI(i - y1), du0_step);
+            fx32 tex_sv = v1 + MUL(FXI(i - y1), dv0_step);
+
+            fx32 tex_eu = u0 + MUL(FXI(i - y0), du1_step);
+            fx32 tex_ev = v0 + MUL(FXI(i - y0), dv1_step);
+
+            if (ax > bx)
+            {
+                swapi(&ax, &bx);
+                swapfx32(&tex_su, &tex_eu);
+                swapfx32(&tex_sv, &tex_ev);
+            }
+
+            tex_u = tex_su;
+            tex_v = tex_sv;
+
+            fx32 tstep = DIV(FX(1.0f), FXI(bx - ax));
+            fx32 t     = FX(0.0f);
+
+            for (int j = ax; j < bx; j++)
+            {
+                tex_u = MUL(FX(1.0) - t, tex_su) + MUL(t, tex_eu);
+                tex_v = MUL(FX(1.0) - t, tex_sv) + MUL(t, tex_ev);
+
+                (*g_draw_pixel_fn)(j, i, texture_sample_color(tex, tex_u, tex_v));
+                t += tstep;
+            }
+        }
+    }
+}
+
 
 #pragma GCC diagnostic pop

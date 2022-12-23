@@ -5,6 +5,9 @@
 #include <deque>
 #include <fstream>
 #include <sstream>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <verilated.h>
 #include <iostream>
@@ -27,6 +30,7 @@ typedef enum {
     SET_XOSERA_DATA_IN,
     SET_XOSERA_CS_N,
     SET_XOSERA_RD_NWR,
+    SEND_DATA_VALUE,
     PULSE_CLK
 } commands_t;
 
@@ -36,7 +40,14 @@ typedef struct {
     uint16_t value;
 } command_t;
 
+std::mutex commands_m;
 std::deque<command_t> commands;
+
+uint16_t data_value;
+std::mutex data_m;
+std::condition_variable data_cv;
+bool data_ready = false;
+bool data_processed = false;
 
 // 640x480
 const int vga_width = 800;
@@ -57,19 +68,9 @@ double sc_time_stamp()
     return 0.0;
 }
 
-void pulse_clk()
-{
-    top->clk = 1;
-    top->contextp()->timeInc(1);
-    top->eval();    
-
-    top->clk = 0;
-    top->contextp()->timeInc(1);
-    top->eval();
-}
-
 void xosera_write(uint8_t reg, uint16_t value)
 {
+    commands_m.lock();
     commands.emplace_back(command_t{SET_XOSERA_REG_NUM, reg});
 
     commands.emplace_back(command_t{SET_XOSERA_BYTESEL, 0}); // even
@@ -97,11 +98,97 @@ void xosera_write(uint8_t reg, uint16_t value)
     commands.emplace_back(command_t{SET_XOSERA_CS_N, 1});
     commands.emplace_back(command_t{SET_XOSERA_RD_NWR, 1}); // read
     commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands_m.unlock();
 }
+
+uint16_t xosera_read(uint8_t reg)
+{
+    uint16_t value;
+    bool fetched;
+
+    // Request MSB
+    
+    commands_m.lock();
+    commands.emplace_back(command_t{SET_XOSERA_REG_NUM, reg});
+    commands.emplace_back(command_t{SET_XOSERA_BYTESEL, 0}); // even
+    commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands.emplace_back(command_t{SET_XOSERA_CS_N, 0});
+    commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands.emplace_back(command_t{SEND_DATA_VALUE, 0});
+    commands_m.unlock();
+
+    {
+        // Wait until main() sends data
+        std::unique_lock<std::mutex> lk(data_m);
+        data_cv.wait(lk, []{return data_ready;});
+        data_ready = false;
+
+        // after the wait, we own the lock.
+        value = data_value << 8;
+    
+        // Send data back to main()
+        data_processed = true;
+    
+        // Manual unlocking is done before notifying, to avoid waking up
+        // the waiting thread only to block again (see notify_one for details)
+        lk.unlock();
+        data_cv.notify_one();        
+    }
+
+    commands_m.lock();
+    commands.emplace_back(command_t{SET_XOSERA_CS_N, 1});
+    commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands_m.unlock();
+
+    // Request LSB
+
+    commands_m.lock();
+    commands.emplace_back(command_t{SET_XOSERA_REG_NUM, reg});
+    commands.emplace_back(command_t{SET_XOSERA_BYTESEL, 1}); // odd
+    commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands.emplace_back(command_t{SET_XOSERA_CS_N, 0});
+    commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands.emplace_back(command_t{SEND_DATA_VALUE, 0});
+    commands_m.unlock();
+
+    {
+        // Wait until main() sends data
+        std::unique_lock<std::mutex> lk(data_m);
+        data_cv.wait(lk, []{return data_ready;});
+        data_ready = false;
+
+        // after the wait, we own the lock.
+        value |= data_value & 0xff;
+    
+        // Send data back to main()
+        data_processed = true;
+    
+        // Manual unlocking is done before notifying, to avoid waking up
+        // the waiting thread only to block again (see notify_one for details)
+        lk.unlock();
+        data_cv.notify_one();        
+    }
+
+    commands_m.lock();
+    commands.emplace_back(command_t{SET_XOSERA_CS_N, 1});
+    commands.emplace_back(command_t{PULSE_CLK, 0});
+    commands_m.unlock();
+
+    return value;
+}
+
 
 void xm_setw(uint16_t reg, uint16_t value)
 {
     xosera_write(reg, value);
+}
+
+uint16_t xm_getw(uint16_t reg)
+{
+    return xosera_read(reg);
 }
 
 void xreg_setw(uint16_t reg, uint16_t value)
@@ -110,23 +197,7 @@ void xreg_setw(uint16_t reg, uint16_t value)
     xosera_write(XM_XDATA >> 2, value);
 }
 
-// *** define C++ function ***
-static int MyCppFunction(lua_State* L) // Lua callable functions must be this format
-{
-    xreg_setw(XR_PA_DISP_ADDR, 0);
-    xreg_setw(XR_PA_LINE_LEN, 320);
-    xreg_setw(XR_PA_GFX_CTRL, 0x0055);
-    xm_setw(XM_WR_INCR >> 2, 0x0001);
-    xm_setw(XM_WR_ADDR >> 2, 0);
-    for (int y = 0; y < 240; ++y) {
-        for (int x = 0; x < 320; ++x) {
-            xm_setw(XM_DATA >> 2, 0x1111);
-       }
-    }
-    return 0; // how many params we're passing to Lua
-}
-
-static int lua_xm_setw(lua_State* L) // Lua callable functions must be this format
+static int lua_xm_setw(lua_State* L)
 {
     uint16_t reg = luaL_checkinteger(L, 1);
     uint16_t value = luaL_checkinteger(L, 2);
@@ -134,7 +205,15 @@ static int lua_xm_setw(lua_State* L) // Lua callable functions must be this form
     return 0;
 }
 
-static int lua_xreg_setw(lua_State* L) // Lua callable functions must be this format
+static int lua_xm_getw(lua_State* L)
+{
+    uint16_t reg = luaL_checkinteger(L, 1);
+    uint16_t value = xm_getw(reg);
+    lua_pushinteger(L, value);
+    return 1;
+}
+
+static int lua_xreg_setw(lua_State* L)
 {
     uint16_t reg = luaL_checkinteger(L, 1);
     uint16_t value = luaL_checkinteger(L, 2);
@@ -146,12 +225,13 @@ void run_script()
 {
     lua_State* L = luaL_newstate(); // create a new lua instance
     luaL_openlibs(L); // give lua access to basic libraries
-    lua_register(L, "CallMyCppFunction", MyCppFunction); // register our C++ function with Lua
     lua_register(L, "xm_setw", lua_xm_setw);
+    lua_register(L, "xm_getw", lua_xm_getw);
     lua_register(L, "xreg_setw", lua_xreg_setw);
     int ret = luaL_dofile(L, "scripts/test1.lua"); // loads the Lua script
     if (ret) {
         std::cout << "Lua script error\n";
+        return;
     }
 }
 
@@ -231,6 +311,8 @@ int main(int argc, char **argv, char **env)
         unsigned int frame_counter = 0;
         bool was_vsync = false;
 
+        std::thread *lua_thread = nullptr;
+
         size_t pixel_index = 0;
 
         top->clk = 0;
@@ -257,6 +339,7 @@ int main(int argc, char **argv, char **env)
                 // Process commands
                 if (!top->reset)
                 {
+                    commands_m.lock();
                     bool stop = false;
                     while (!commands.empty() && !stop) {
                         command_t cmd = commands.front();
@@ -264,24 +347,50 @@ int main(int argc, char **argv, char **env)
 
                         switch (cmd.command) {
                             case SET_XOSERA_REG_NUM:
+                                //printf("SET_XOSERA_REG_NUM: %x\n", cmd.value);
                                 top->xosera_reg_num = cmd.value;
                                 break;
                             case SET_XOSERA_BYTESEL:
+                                //printf("SET_XOSERA_BYTESEL: %x\n", cmd.value);
                                 top->xosera_bytesel = cmd.value;
                                 break;
                             case SET_XOSERA_DATA_IN:
+                                //printf("SET_XOSERA_DATA_IN: %x\n", cmd.value);
                                 top->xosera_data_in = cmd.value;
                                 break;
                             case SET_XOSERA_CS_N:
+                                //printf("SET_XOSERA_CS_N: %x\n", cmd.value);
                                 top->xosera_cs_n = cmd.value;
                                 break;
                             case SET_XOSERA_RD_NWR:
+                                //printf("SET_XOSERA_RD_NWR: %x\n", cmd.value);
                                 top->xosera_rd_nwr = cmd.value;
                                 break;
+                            case SEND_DATA_VALUE:
+                                {
+                                    data_value = top->xosera_data_out;
+                                    //printf("SEND_DATA_VALUE: %x\n", data_value);
+                                    // send data to the worker thread
+                                    {
+                                        std::lock_guard<std::mutex> lk(data_m);
+                                        data_ready = true;
+                                    }
+                                    data_cv.notify_one();
+                                
+                                    // wait for the worker
+                                    {
+                                        std::unique_lock<std::mutex> lk(data_m);
+                                        data_cv.wait(lk, []{return data_processed;});
+                                        data_processed = false;
+                                    }
+                                }
+                                break;
                             case PULSE_CLK:
+                                //printf("PULSE_CLK\n");
                                 stop = true;
                         }
                     }
+                    commands_m.unlock();
                 }
 
                 // Update video display
@@ -318,7 +427,12 @@ int main(int argc, char **argv, char **env)
                 tp_clk = tp_now;
             }
 
-            if (!top->reset && commands.empty() && duration_frame.count() >= 1.0 / 60.0)
+            bool commands_empty;
+            commands_m.lock();
+            commands_empty = commands.empty();
+            commands_m.unlock();
+
+            if (!top->reset && commands_empty && duration_frame.count() >= 1.0 / 60.0)
             {
                 while (SDL_PollEvent(&e))
                 {
@@ -343,7 +457,12 @@ int main(int argc, char **argv, char **env)
                             switch (e.key.keysym.sym)
                             {
                             case SDLK_F5:
-                                run_script();
+                                if (lua_thread) {
+                                    lua_thread->join();
+                                    lua_thread = nullptr;
+                                }
+                                if (!lua_thread)
+                                    lua_thread = new std::thread(run_script);
                                 break;
                             case SDLK_F12:
                                 std::cout << "Reset context\n";
@@ -376,6 +495,11 @@ int main(int argc, char **argv, char **env)
                 SDL_RenderPresent(renderer);
             }
 
+        }
+
+        if (lua_thread) {
+            lua_thread->join();
+            lua_thread = nullptr;
         }
 
         // Final model cleanup

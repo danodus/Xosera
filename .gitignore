@@ -28,6 +28,7 @@ rtl/**/*.json
 
 # Verilator output
 rtl/sim/obj_dir/*
+rtl/lsim/obj_dir/*
 
 # Verilator vlt
 **/*.vlt

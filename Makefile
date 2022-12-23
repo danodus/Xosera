@@ -32,6 +32,8 @@ info:
 	@echo "   make irun            - build and run Icarus Verilog simulation"
 	@echo "   make vsim            - build Verilator C++ & SDL2 native visual simulation files"
 	@echo "   make vrun            - build and run Verilator C++ & SDL2 native visual simulation"
+	@echo "   make vlsim           - build Lua based Verilator C++ & SDL2 native visual simulation files"
+	@echo "   make vlrun           - build and run Lua based Verilator C++ & SDL2 native visual simulation"
 	@echo "   make count           - build Xosera VGA with Yosys count for module resource usage"
 	@echo "   make utils           - build misc C++ image utilities"
 	@echo "   make m68k            - build rosco_m68k Xosera test programs"
@@ -117,9 +119,17 @@ irun:
 vsim:
 	cd rtl && $(MAKE) vsim
 
+# Build Verilator simulation targets
+vlsim:
+	cd rtl && $(MAKE) vlsim
+
 # Build and run Verilator simulation targets
 vrun:
 	cd rtl && $(MAKE) vrun
+
+# Build and run Verilator simulation targets
+vlrun:
+	cd rtl && $(MAKE) vlrun
 
 # build Xosera VGA with Yosys count (for module resource usage)
 count:
@@ -182,4 +192,4 @@ m68kclean:
 	cd copper/crop_test_m68k && $(MAKE) clean
 	cd copper/splitscreen_test_m68k && $(MAKE) clean
 
-.PHONY: all upduino upd upd_prog icebreaker iceb iceb_prog rtl sim isim irun vsim vrun utils m68k host_spi xvid_spi clean m68kclean
+.PHONY: all upduino upd upd_prog icebreaker iceb iceb_prog rtl sim isim irun vsim vlsim vrun vlrun utils m68k host_spi xvid_spi clean m68kclean

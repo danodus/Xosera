@@ -28,9 +28,17 @@ irun:
 vsim:
 	$(MAKE) -f sim.mk vsim
 
+# build Verilator native C++ simulation files
+vlsim:
+	$(MAKE) -f lsim.mk vlsim
+
 # build & run Verilator native C++ simulation files
 vrun:
 	$(MAKE) -f sim.mk vrun
+
+# build & run Verilator native C++ simulation files
+vlrun:
+	$(MAKE) -f lsim.mk vlrun
 
 # Build Xosera UPduino 3.x FPGA bitstream
 upd:
@@ -86,7 +94,8 @@ iceb_prog:
 # Clean all project targets
 clean:
 	$(MAKE) -f sim.mk clean
+	$(MAKE) -f lsim.mk clean
 	$(MAKE) -f upduino.mk clean
 	$(MAKE) -f icebreaker.mk clean
 
-.PHONY: all prog def_files sim isim irun vsim vrun upd iceb xosera_board iceb_prog upd_prog xosera_prog clean
+.PHONY: all prog def_files sim isim irun vsim vlsim vrun vlrun upd iceb xosera_board iceb_prog upd_prog xosera_prog clean

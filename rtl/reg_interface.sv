@@ -596,8 +596,6 @@ logic [1:0]     pixel_bpp;          // bpp-4/8
 word_t          pixel_xw;           // x word offset
 word_t          pixel_mult;         // result of (reg_pixel_y * pixel_width) + pixel_xw
 word_t          pixel_addr;         // final result (pixel_base + pixel_mult)
-word_t          unused_high;        // unused high bits from multiply
-word_t          unused_high2;       // unused high bits from base addition
 
 logic [3:0]     pixel_xm;           // nibble mask within word
 
@@ -610,6 +608,10 @@ always_comb begin
         2'b11:  pixel_xm    = { 1'b0, 1'b0, 1'b0, 1'b1 };
     endcase
 end
+
+`ifdef ICE40UP5K
+word_t          unused_high;        // unused high bits from multiply
+word_t          unused_high2;       // unused high bits from base addition
 
 /* verilator lint_off PINCONNECTEMPTY */
 SB_MAC16 #(
@@ -716,6 +718,11 @@ SB_MAC16 #(
     .SIGNEXTOUT()                       // cascaded sign extension output to next DSP block
 );
 /* verilator lint_on PINCONNECTEMPTY */
+`else // ICE40UP5K
+always_comb begin
+    pixel_addr = reg_pixel_y * pixel_width + pixel_xw + pixel_base;
+end
+`endif // ICE40UP5K
 `endif
 
 `ifdef WR_ADD_MAC
